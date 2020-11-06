@@ -15,7 +15,6 @@ exp_dir=$(tts_dir)/espnet/egs/sabina/tts1/$(work_dir)
 trans_type?=char
 exp?=$(trans_type)_train_no_dev_pytorch_train_pytorch_tacotron2
 cuda?=0
-# exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
@@ -43,7 +42,20 @@ train-many:
 #####################################################################################
 put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
-
+#####################################################################################
+steps=700000
+final_name=sabina.pwg.01-$(steps)
+final_model=$(CURDIR)/$(final_name).tar.gz
+prepare_dir=prepared
+$(prepare_dir)/$(final_name):
+	mkdir -p $@
+$(prepare_dir)/$(final_name)/%: exp/train_nodev_ljspeech_parallel_wavegan.v3/% | $(prepare_dir)/$(final_name)
+	cp $< $@
+$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml
+	touch $@
+$(final_model): $(prepare_dir)/.done
+	cd $(prepare_dir) && tar -czvf $@ $(final_name)
+prepare-model: $(final_model)
 #####################################################################################
 clean:
 	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
