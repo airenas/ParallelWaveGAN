@@ -37,7 +37,9 @@ train:
 steps?=700000
 resume=$(exp_dir)/checkpoint-$(steps)steps.pkl
 train-resume:
+ifneq ($(skip-ask), true)
 	@echo -n "Resume from $(resume)? [y/N] " && read ans && [ $${ans:-N} = y ]
+endif
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2 	--resume $(resume)
 #####################################################################################
 train-one:
