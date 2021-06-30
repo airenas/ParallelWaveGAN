@@ -86,7 +86,8 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
             --dumpdir "${dumpdir}/${train_set}" \
             --verbose "${verbose}"
     echo "Successfully finished calculation of statistics."
-
+fi
+if [ "${stage}" -le 21 ] && [ "${stop_stage}" -ge 21 ]; then
     # normalize and dump them
     pids=()
     for name in "${train_set}" "${dev_set}" "${eval_set}"; do
