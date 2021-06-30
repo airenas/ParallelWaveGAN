@@ -32,6 +32,7 @@ ssh:
 #####################################################################################
 prepare: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage -1 --stop-stage 1
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 21 --stop-stage 21
 #####################################################################################
 train: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2
