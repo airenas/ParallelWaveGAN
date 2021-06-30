@@ -30,6 +30,9 @@ nvidia:
 ssh:
 	$(SSH_CMD)
 #####################################################################################
+prepare: 
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage -1 --stop-stage 1
+#####################################################################################
 train: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2
 

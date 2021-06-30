@@ -14,8 +14,9 @@ fi
 set -euo pipefail
 
 cwd=$(pwd)
-if [ ! -e "${download_dir}/sabina.v02" ]; then
+if [ ! -e "${download_dir}/${corpus}" ]; then
     mkdir -p "${download_dir}"
+    cp ${corpus_file} ${download_dir}/
     cd "${download_dir}"
     tar -vxf ./*.tar.gz
     rm ./*.tar.gz
