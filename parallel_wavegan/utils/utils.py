@@ -25,6 +25,8 @@ PRETRAINED_MODEL_LIST = {
     "ljspeech_parallel_wavegan.v3": "1-oZpwpWZMMolDYsCqeL12dFkXSBD9VBq",
     "ljspeech_full_band_melgan.v2": "1Kb7q5zBeQ30Wsnma0X23G08zvgDG5oen",
     "ljspeech_multi_band_melgan.v2": "1b70pJefKI8DhGYz4SxbEHpxm92tj1_qC",
+    "ljspeech_hifigan.v1": "1RZkRdpxITEM1qd3OlQ9I-_tZgvVlf5ZF",
+    "ljspeech_style_melgan.v1": "1fzFX8baOkRPMxydYEo1C_J2NaJ1BMMuF",
     "jsut_parallel_wavegan.v1": "1qok91A6wuubuz4be-P9R2zKhNmQXG0VQ",
     "jsut_multi_band_melgan.v2": "1chTt-76q2p69WPpZ1t1tt8szcM96IKad",
     "csmsc_parallel_wavegan.v1": "1QTOAokhD5dtRnqlMPTXTW91-CG7jf74e",
@@ -37,6 +39,9 @@ PRETRAINED_MODEL_LIST = {
     "libritts_parallel_wavegan.v1": "1zHQl8kUYEuZ_i1qEFU6g2MEu99k3sHmR",
     "libritts_parallel_wavegan.v1.long": "1b9zyBYGCCaJu0TIus5GXoMF8M3YEbqOw",
     "libritts_multi_band_melgan.v2": "1kIDSBjrQvAsRewHPiFwBZ3FDelTWMp64",
+    "kss_parallel_wavegan.v1": "1mLtQAzZHLiGSWguKCGG0EZa4C_xUO5gX",
+    "hui_acg_hokuspokus_parallel_wavegan.v1": "1irKf3okMLau56WNeOnhr2ZfSVESyQCGS",
+    "ruslan_parallel_wavegan.v1": "1M3UM6HN6wrfSe5jdgXwBnAIl_lJzLzuI",
 }
 
 
@@ -114,12 +119,15 @@ def write_hdf5(hdf5_name, hdf5_path, write_data, is_overwrite=True):
         # check dataset existence
         if hdf5_path in hdf5_file:
             if is_overwrite:
-                logging.warning("Dataset in hdf5 file already exists. "
-                                "recreate dataset in hdf5.")
+                logging.warning(
+                    "Dataset in hdf5 file already exists. " "recreate dataset in hdf5."
+                )
                 hdf5_file.__delitem__(hdf5_path)
             else:
-                logging.error("Dataset in hdf5 file already exists. "
-                              "if you want to overwrite, please set is_overwrite = True.")
+                logging.error(
+                    "Dataset in hdf5 file already exists. "
+                    "if you want to overwrite, please set is_overwrite = True."
+                )
                 hdf5_file.close()
                 sys.exit(1)
     else:
@@ -192,7 +200,9 @@ class HDF5ScpLoader(object):
             else:
                 p1, p2 = p.split(":")
                 feats = [read_hdf5(p1, p) for p in p2.split(",")]
-                return np.concatenate([f if len(f.shape) != 1 else f.reshape(-1, 1) for f in feats], 1)
+                return np.concatenate(
+                    [f if len(f.shape) != 1 else f.reshape(-1, 1) for f in feats], 1
+                )
         else:
             return read_hdf5(p, self.default_hdf5_path)
 
@@ -268,12 +278,13 @@ class NpyScpLoader(object):
             yield self[key]
 
 
-def load_model(checkpoint, config=None):
+def load_model(checkpoint, config=None, stats=None):
     """Load trained model.
 
     Args:
         checkpoint (str): Checkpoint path.
         config (dict): Configuration dict.
+        stats (str): Statistics file path.
 
     Return:
         torch.nn.Module: Model instance.
@@ -292,12 +303,26 @@ def load_model(checkpoint, config=None):
     # get model and load parameters
     model_class = getattr(
         parallel_wavegan.models,
-        config.get("generator_type", "ParallelWaveGANGenerator")
+        config.get("generator_type", "ParallelWaveGANGenerator"),
     )
     model = model_class(**config["generator_params"])
     model.load_state_dict(
         torch.load(checkpoint, map_location="cpu")["model"]["generator"]
     )
+
+    # check stats existence
+    if stats is None:
+        dirname = os.path.dirname(checkpoint)
+        if config["format"] == "hdf5":
+            ext = "h5"
+        else:
+            ext = "npy"
+        if os.path.exists(os.path.join(dirname, f"stats.{ext}")):
+            stats = os.path.join(dirname, f"stats.{ext}")
+
+    # load stats
+    if stats is not None:
+        model.register_stats(stats)
 
     # add pqmf if needed
     if config["generator_params"]["out_channels"] > 1:
@@ -337,8 +362,10 @@ def download_pretrained_model(tag, download_dir=None):
         # lazy load for compatibility
         import gdown
 
-        gdown.download(f"https://drive.google.com/uc?id={id_}", output_path, quiet=False)
-        with tarfile.open(output_path, 'r:*') as tar:
+        gdown.download(
+            f"https://drive.google.com/uc?id={id_}", output_path, quiet=False
+        )
+        with tarfile.open(output_path, "r:*") as tar:
             for member in tar.getmembers():
                 if member.isreg():
                     member.name = os.path.basename(member.name)

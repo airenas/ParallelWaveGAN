@@ -13,28 +13,30 @@ import torch
 from parallel_wavegan.layers import CausalConv1d
 from parallel_wavegan.layers import CausalConvTranspose1d
 from parallel_wavegan.layers import ResidualStack
+from parallel_wavegan.utils import read_hdf5
 
 
 class MelGANGenerator(torch.nn.Module):
     """MelGAN generator module."""
 
-    def __init__(self,
-                 in_channels=80,
-                 out_channels=1,
-                 kernel_size=7,
-                 channels=512,
-                 bias=True,
-                 upsample_scales=[8, 8, 2, 2],
-                 stack_kernel_size=3,
-                 stacks=3,
-                 nonlinear_activation="LeakyReLU",
-                 nonlinear_activation_params={"negative_slope": 0.2},
-                 pad="ReflectionPad1d",
-                 pad_params={},
-                 use_final_nonlinear_activation=True,
-                 use_weight_norm=True,
-                 use_causal_conv=False,
-                 ):
+    def __init__(
+        self,
+        in_channels=80,
+        out_channels=1,
+        kernel_size=7,
+        channels=512,
+        bias=True,
+        upsample_scales=[8, 8, 2, 2],
+        stack_kernel_size=3,
+        stacks=3,
+        nonlinear_activation="LeakyReLU",
+        nonlinear_activation_params={"negative_slope": 0.2},
+        pad="ReflectionPad1d",
+        pad_params={},
+        use_final_nonlinear_activation=True,
+        use_weight_norm=True,
+        use_causal_conv=False,
+    ):
         """Initialize MelGANGenerator module.
 
         Args:
@@ -73,13 +75,21 @@ class MelGANGenerator(torch.nn.Module):
             ]
         else:
             layers += [
-                CausalConv1d(in_channels, channels, kernel_size,
-                             bias=bias, pad=pad, pad_params=pad_params),
+                CausalConv1d(
+                    in_channels,
+                    channels,
+                    kernel_size,
+                    bias=bias,
+                    pad=pad,
+                    pad_params=pad_params,
+                ),
             ]
 
         for i, upsample_scale in enumerate(upsample_scales):
             # add upsampling layer
-            layers += [getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)]
+            layers += [
+                getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)
+            ]
             if not use_causal_conv:
                 layers += [
                     torch.nn.ConvTranspose1d(
@@ -120,16 +130,26 @@ class MelGANGenerator(torch.nn.Module):
                 ]
 
         # add final layer
-        layers += [getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)]
+        layers += [
+            getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params)
+        ]
         if not use_causal_conv:
             layers += [
                 getattr(torch.nn, pad)((kernel_size - 1) // 2, **pad_params),
-                torch.nn.Conv1d(channels // (2 ** (i + 1)), out_channels, kernel_size, bias=bias),
+                torch.nn.Conv1d(
+                    channels // (2 ** (i + 1)), out_channels, kernel_size, bias=bias
+                ),
             ]
         else:
             layers += [
-                CausalConv1d(channels // (2 ** (i + 1)), out_channels, kernel_size,
-                             bias=bias, pad=pad, pad_params=pad_params),
+                CausalConv1d(
+                    channels // (2 ** (i + 1)),
+                    out_channels,
+                    kernel_size,
+                    bias=bias,
+                    pad=pad,
+                    pad_params=pad_params,
+                ),
             ]
         if use_final_nonlinear_activation:
             layers += [torch.nn.Tanh()]
@@ -161,6 +181,7 @@ class MelGANGenerator(torch.nn.Module):
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
+
         def _remove_weight_norm(m):
             try:
                 logging.debug(f"Weight norm is removed from {m}.")
@@ -172,8 +193,11 @@ class MelGANGenerator(torch.nn.Module):
 
     def apply_weight_norm(self):
         """Apply weight normalization module from all of the layers."""
+
         def _apply_weight_norm(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(
+                m, torch.nn.ConvTranspose1d
+            ):
                 torch.nn.utils.weight_norm(m)
                 logging.debug(f"Weight norm is applied to {m}.")
 
@@ -186,18 +210,40 @@ class MelGANGenerator(torch.nn.Module):
         https://github.com/descriptinc/melgan-neurips/blob/master/mel2wav/modules.py
 
         """
+
         def _reset_parameters(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(
+                m, torch.nn.ConvTranspose1d
+            ):
                 m.weight.data.normal_(0.0, 0.02)
                 logging.debug(f"Reset parameters in {m}.")
 
         self.apply(_reset_parameters)
 
-    def inference(self, c):
+    def register_stats(self, stats):
+        """Register stats for de-normalization as buffer.
+
+        Args:
+            stats (str): Path of statistics file (".npy" or ".h5").
+
+        """
+        assert stats.endswith(".h5") or stats.endswith(".npy")
+        if stats.endswith(".h5"):
+            mean = read_hdf5(stats, "mean").reshape(-1)
+            scale = read_hdf5(stats, "scale").reshape(-1)
+        else:
+            mean = np.load(stats)[0].reshape(-1)
+            scale = np.load(stats)[1].reshape(-1)
+        self.register_buffer("mean", torch.from_numpy(mean).float())
+        self.register_buffer("scale", torch.from_numpy(scale).float())
+        logging.info("Successfully registered stats as buffer.")
+
+    def inference(self, c, normalize_before=False):
         """Perform inference.
 
         Args:
             c (Union[Tensor, ndarray]): Input tensor (T, in_channels).
+            normalize_before (bool): Whether to perform normalization.
 
         Returns:
             Tensor: Output tensor (T ** prod(upsample_scales), out_channels).
@@ -205,6 +251,8 @@ class MelGANGenerator(torch.nn.Module):
         """
         if not isinstance(c, torch.Tensor):
             c = torch.tensor(c, dtype=torch.float).to(next(self.parameters()).device)
+        if normalize_before:
+            c = (c - self.mean) / self.scale
         c = self.melgan(c.transpose(1, 0).unsqueeze(0))
         if self.pqmf is not None:
             c = self.pqmf.synthesis(c)
@@ -214,19 +262,20 @@ class MelGANGenerator(torch.nn.Module):
 class MelGANDiscriminator(torch.nn.Module):
     """MelGAN discriminator module."""
 
-    def __init__(self,
-                 in_channels=1,
-                 out_channels=1,
-                 kernel_sizes=[5, 3],
-                 channels=16,
-                 max_downsample_channels=1024,
-                 bias=True,
-                 downsample_scales=[4, 4, 4, 4],
-                 nonlinear_activation="LeakyReLU",
-                 nonlinear_activation_params={"negative_slope": 0.2},
-                 pad="ReflectionPad1d",
-                 pad_params={},
-                 ):
+    def __init__(
+        self,
+        in_channels=1,
+        out_channels=1,
+        kernel_sizes=[5, 3],
+        channels=16,
+        max_downsample_channels=1024,
+        bias=True,
+        downsample_scales=[4, 4, 4, 4],
+        nonlinear_activation="LeakyReLU",
+        nonlinear_activation_params={"negative_slope": 0.2},
+        pad="ReflectionPad1d",
+        pad_params={},
+    ):
         """Initilize MelGAN discriminator module.
 
         Args:
@@ -258,7 +307,9 @@ class MelGANDiscriminator(torch.nn.Module):
         self.layers += [
             torch.nn.Sequential(
                 getattr(torch.nn, pad)((np.prod(kernel_sizes) - 1) // 2, **pad_params),
-                torch.nn.Conv1d(in_channels, channels, np.prod(kernel_sizes), bias=bias),
+                torch.nn.Conv1d(
+                    in_channels, channels, np.prod(kernel_sizes), bias=bias
+                ),
                 getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params),
             )
         ]
@@ -270,14 +321,17 @@ class MelGANDiscriminator(torch.nn.Module):
             self.layers += [
                 torch.nn.Sequential(
                     torch.nn.Conv1d(
-                        in_chs, out_chs,
+                        in_chs,
+                        out_chs,
                         kernel_size=downsample_scale * 10 + 1,
                         stride=downsample_scale,
                         padding=downsample_scale * 5,
                         groups=in_chs // 4,
                         bias=bias,
                     ),
-                    getattr(torch.nn, nonlinear_activation)(**nonlinear_activation_params),
+                    getattr(torch.nn, nonlinear_activation)(
+                        **nonlinear_activation_params
+                    ),
                 )
             ]
             in_chs = out_chs
@@ -287,7 +341,9 @@ class MelGANDiscriminator(torch.nn.Module):
         self.layers += [
             torch.nn.Sequential(
                 torch.nn.Conv1d(
-                    in_chs, out_chs, kernel_sizes[0],
+                    in_chs,
+                    out_chs,
+                    kernel_sizes[0],
                     padding=(kernel_sizes[0] - 1) // 2,
                     bias=bias,
                 ),
@@ -296,7 +352,9 @@ class MelGANDiscriminator(torch.nn.Module):
         ]
         self.layers += [
             torch.nn.Conv1d(
-                out_chs, out_channels, kernel_sizes[1],
+                out_chs,
+                out_channels,
+                kernel_sizes[1],
                 padding=(kernel_sizes[1] - 1) // 2,
                 bias=bias,
             ),
@@ -323,34 +381,36 @@ class MelGANDiscriminator(torch.nn.Module):
 class MelGANMultiScaleDiscriminator(torch.nn.Module):
     """MelGAN multi-scale discriminator module."""
 
-    def __init__(self,
-                 in_channels=1,
-                 out_channels=1,
-                 scales=3,
-                 downsample_pooling="AvgPool1d",
-                 # follow the official implementation setting
-                 downsample_pooling_params={
-                     "kernel_size": 4,
-                     "stride": 2,
-                     "padding": 1,
-                     "count_include_pad": False,
-                 },
-                 kernel_sizes=[5, 3],
-                 channels=16,
-                 max_downsample_channels=1024,
-                 bias=True,
-                 downsample_scales=[4, 4, 4, 4],
-                 nonlinear_activation="LeakyReLU",
-                 nonlinear_activation_params={"negative_slope": 0.2},
-                 pad="ReflectionPad1d",
-                 pad_params={},
-                 use_weight_norm=True,
-                 ):
+    def __init__(
+        self,
+        in_channels=1,
+        out_channels=1,
+        scales=3,
+        downsample_pooling="AvgPool1d",
+        # follow the official implementation setting
+        downsample_pooling_params={
+            "kernel_size": 4,
+            "stride": 2,
+            "padding": 1,
+            "count_include_pad": False,
+        },
+        kernel_sizes=[5, 3],
+        channels=16,
+        max_downsample_channels=1024,
+        bias=True,
+        downsample_scales=[4, 4, 4, 4],
+        nonlinear_activation="LeakyReLU",
+        nonlinear_activation_params={"negative_slope": 0.2},
+        pad="ReflectionPad1d",
+        pad_params={},
+        use_weight_norm=True,
+    ):
         """Initilize MelGAN multi-scale discriminator module.
 
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
+            scales (int): Number of multi-scales.
             downsample_pooling (str): Pooling module name for downsampling of the inputs.
             downsample_pooling_params (dict): Parameters for the above pooling module.
             kernel_sizes (list): List of two kernel sizes. The sum will be used for the first conv layer,
@@ -386,7 +446,9 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
                     pad_params=pad_params,
                 )
             ]
-        self.pooling = getattr(torch.nn, downsample_pooling)(**downsample_pooling_params)
+        self.pooling = getattr(torch.nn, downsample_pooling)(
+            **downsample_pooling_params
+        )
 
         # apply weight norm
         if use_weight_norm:
@@ -414,6 +476,7 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
 
     def remove_weight_norm(self):
         """Remove weight normalization module from all of the layers."""
+
         def _remove_weight_norm(m):
             try:
                 logging.debug(f"Weight norm is removed from {m}.")
@@ -425,8 +488,11 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
 
     def apply_weight_norm(self):
         """Apply weight normalization module from all of the layers."""
+
         def _apply_weight_norm(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(
+                m, torch.nn.ConvTranspose1d
+            ):
                 torch.nn.utils.weight_norm(m)
                 logging.debug(f"Weight norm is applied to {m}.")
 
@@ -439,8 +505,11 @@ class MelGANMultiScaleDiscriminator(torch.nn.Module):
         https://github.com/descriptinc/melgan-neurips/blob/master/mel2wav/modules.py
 
         """
+
         def _reset_parameters(m):
-            if isinstance(m, torch.nn.Conv1d) or isinstance(m, torch.nn.ConvTranspose1d):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(
+                m, torch.nn.ConvTranspose1d
+            ):
                 m.weight.data.normal_(0.0, 0.02)
                 logging.debug(f"Reset parameters in {m}.")
 

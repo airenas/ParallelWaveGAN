@@ -30,6 +30,10 @@ import parallel_wavegan.optimizers
 from parallel_wavegan.datasets import AudioMelDataset
 from parallel_wavegan.datasets import AudioMelSCPDataset
 from parallel_wavegan.layers import PQMF
+from parallel_wavegan.losses import DiscriminatorAdversarialLoss
+from parallel_wavegan.losses import FeatureMatchLoss
+from parallel_wavegan.losses import GeneratorAdversarialLoss
+from parallel_wavegan.losses import MelSpectrogramLoss
 from parallel_wavegan.losses import MultiResolutionSTFTLoss
 from parallel_wavegan.utils import read_hdf5
 
@@ -40,18 +44,19 @@ matplotlib.use("Agg")
 class Trainer(object):
     """Customized trainer module for Parallel WaveGAN training."""
 
-    def __init__(self,
-                 steps,
-                 epochs,
-                 data_loader,
-                 sampler,
-                 model,
-                 criterion,
-                 optimizer,
-                 scheduler,
-                 config,
-                 device=torch.device("cpu"),
-                 ):
+    def __init__(
+        self,
+        steps,
+        epochs,
+        data_loader,
+        sampler,
+        model,
+        criterion,
+        optimizer,
+        scheduler,
+        config,
+        device=torch.device("cpu"),
+    ):
         """Initialize trainer.
 
         Args:
@@ -83,9 +88,9 @@ class Trainer(object):
 
     def run(self):
         """Run training."""
-        self.tqdm = tqdm(initial=self.steps,
-                         total=self.config["train_max_steps"],
-                         desc="[train]")
+        self.tqdm = tqdm(
+            initial=self.steps, total=self.config["train_max_steps"], desc="[train]"
+        )
         while True:
             # train one epoch
             self._train_epoch()
@@ -141,18 +146,32 @@ class Trainer(object):
         """
         state_dict = torch.load(checkpoint_path, map_location="cpu")
         if self.config["distributed"]:
-            self.model["generator"].module.load_state_dict(state_dict["model"]["generator"])
-            self.model["discriminator"].module.load_state_dict(state_dict["model"]["discriminator"])
+            self.model["generator"].module.load_state_dict(
+                state_dict["model"]["generator"]
+            )
+            self.model["discriminator"].module.load_state_dict(
+                state_dict["model"]["discriminator"]
+            )
         else:
             self.model["generator"].load_state_dict(state_dict["model"]["generator"])
-            self.model["discriminator"].load_state_dict(state_dict["model"]["discriminator"])
+            self.model["discriminator"].load_state_dict(
+                state_dict["model"]["discriminator"]
+            )
         if not load_only_params:
             self.steps = state_dict["steps"]
             self.epochs = state_dict["epochs"]
-            self.optimizer["generator"].load_state_dict(state_dict["optimizer"]["generator"])
-            self.optimizer["discriminator"].load_state_dict(state_dict["optimizer"]["discriminator"])
-            self.scheduler["generator"].load_state_dict(state_dict["scheduler"]["generator"])
-            self.scheduler["discriminator"].load_state_dict(state_dict["scheduler"]["discriminator"])
+            self.optimizer["generator"].load_state_dict(
+                state_dict["optimizer"]["generator"]
+            )
+            self.optimizer["discriminator"].load_state_dict(
+                state_dict["optimizer"]["discriminator"]
+            )
+            self.scheduler["generator"].load_state_dict(
+                state_dict["scheduler"]["generator"]
+            )
+            self.scheduler["discriminator"].load_state_dict(
+                state_dict["scheduler"]["discriminator"]
+            )
 
     def _train_step(self, batch):
         """Train model one step."""
@@ -164,46 +183,54 @@ class Trainer(object):
         #######################
         #      Generator      #
         #######################
-        y_ = self.model["generator"](*x)
+        if self.steps > self.config.get("generator_train_start_steps", 0):
+            y_ = self.model["generator"](*x)
 
-        # reconstruct the signal from multi-band signal
-        if self.config["generator_params"]["out_channels"] > 1:
-            y_mb_ = y_
-            y_ = self.criterion["pqmf"].synthesis(y_mb_)
+            # reconstruct the signal from multi-band signal
+            if self.config["generator_params"]["out_channels"] > 1:
+                y_mb_ = y_
+                y_ = self.criterion["pqmf"].synthesis(y_mb_)
 
-        # multi-resolution sfft loss
-        sc_loss, mag_loss = self.criterion["stft"](y_.squeeze(1), y.squeeze(1))
-        self.total_train_loss["train/spectral_convergence_loss"] += sc_loss.item()
-        self.total_train_loss["train/log_stft_magnitude_loss"] += mag_loss.item()
-        gen_loss = sc_loss + mag_loss
+            # initialize
+            gen_loss = 0.0
 
-        # subband multi-resolution stft loss
-        if self.config.get("use_subband_stft_loss", False):
-            gen_loss *= 0.5  # for balancing with subband stft loss
-            y_mb = self.criterion["pqmf"].analysis(y)
-            y_mb = y_mb.view(-1, y_mb.size(2))  # (B, C, T) -> (B x C, T)
-            y_mb_ = y_mb_.view(-1, y_mb_.size(2))  # (B, C, T) -> (B x C, T)
-            sub_sc_loss, sub_mag_loss = self.criterion["sub_stft"](y_mb_, y_mb)
-            self.total_train_loss[
-                "train/sub_spectral_convergence_loss"] += sub_sc_loss.item()
-            self.total_train_loss[
-                "train/sub_log_stft_magnitude_loss"] += sub_mag_loss.item()
-            gen_loss += 0.5 * (sub_sc_loss + sub_mag_loss)
+            # multi-resolution sfft loss
+            if self.config["use_stft_loss"]:
+                sc_loss, mag_loss = self.criterion["stft"](y_, y)
+                gen_loss += sc_loss + mag_loss
+                self.total_train_loss[
+                    "train/spectral_convergence_loss"
+                ] += sc_loss.item()
+                self.total_train_loss[
+                    "train/log_stft_magnitude_loss"
+                ] += mag_loss.item()
 
-        # adversarial loss
-        if self.steps > self.config["discriminator_train_start_steps"]:
-            p_ = self.model["discriminator"](y_)
-            if not isinstance(p_, list):
-                # for standard discriminator
-                adv_loss = self.criterion["mse"](p_, p_.new_ones(p_.size()))
-                self.total_train_loss["train/adversarial_loss"] += adv_loss.item()
-            else:
-                # for multi-scale discriminator
-                adv_loss = 0.0
-                for i in range(len(p_)):
-                    adv_loss += self.criterion["mse"](
-                        p_[i][-1], p_[i][-1].new_ones(p_[i][-1].size()))
-                adv_loss /= (i + 1)
+            # subband multi-resolution stft loss
+            if self.config["use_subband_stft_loss"]:
+                gen_loss *= 0.5  # for balancing with subband stft loss
+                y_mb = self.criterion["pqmf"].analysis(y)
+                sub_sc_loss, sub_mag_loss = self.criterion["sub_stft"](y_mb_, y_mb)
+                gen_loss += 0.5 * (sub_sc_loss + sub_mag_loss)
+                self.total_train_loss[
+                    "train/sub_spectral_convergence_loss"
+                ] += sub_sc_loss.item()
+                self.total_train_loss[
+                    "train/sub_log_stft_magnitude_loss"
+                ] += sub_mag_loss.item()
+
+            # mel spectrogram loss
+            if self.config["use_mel_loss"]:
+                mel_loss = self.criterion["mel"](y_, y)
+                gen_loss += mel_loss
+                self.total_train_loss["train/mel_loss"] += mel_loss.item()
+
+            # weighting aux loss
+            gen_loss *= self.config.get("lambda_aux", 1.0)
+
+            # adversarial loss
+            if self.steps > self.config["discriminator_train_start_steps"]:
+                p_ = self.model["discriminator"](y_)
+                adv_loss = self.criterion["gen_adv"](p_)
                 self.total_train_loss["train/adversarial_loss"] += adv_loss.item()
 
                 # feature matching loss
@@ -211,28 +238,27 @@ class Trainer(object):
                     # no need to track gradients
                     with torch.no_grad():
                         p = self.model["discriminator"](y)
-                    fm_loss = 0.0
-                    for i in range(len(p_)):
-                        for j in range(len(p_[i]) - 1):
-                            fm_loss += self.criterion["l1"](p_[i][j], p[i][j].detach())
-                    fm_loss /= (i + 1) * (j + 1)
-                    self.total_train_loss["train/feature_matching_loss"] += fm_loss.item()
+                    fm_loss = self.criterion["feat_match"](p_, p)
+                    self.total_train_loss[
+                        "train/feature_matching_loss"
+                    ] += fm_loss.item()
                     adv_loss += self.config["lambda_feat_match"] * fm_loss
 
-            # add adversarial loss to generator loss
-            gen_loss += self.config["lambda_adv"] * adv_loss
+                # add adversarial loss to generator loss
+                gen_loss += self.config["lambda_adv"] * adv_loss
 
-        self.total_train_loss["train/generator_loss"] += gen_loss.item()
+            self.total_train_loss["train/generator_loss"] += gen_loss.item()
 
-        # update generator
-        self.optimizer["generator"].zero_grad()
-        gen_loss.backward()
-        if self.config["generator_grad_norm"] > 0:
-            torch.nn.utils.clip_grad_norm_(
-                self.model["generator"].parameters(),
-                self.config["generator_grad_norm"])
-        self.optimizer["generator"].step()
-        self.scheduler["generator"].step()
+            # update generator
+            self.optimizer["generator"].zero_grad()
+            gen_loss.backward()
+            if self.config["generator_grad_norm"] > 0:
+                torch.nn.utils.clip_grad_norm_(
+                    self.model["generator"].parameters(),
+                    self.config["generator_grad_norm"],
+                )
+            self.optimizer["generator"].step()
+            self.scheduler["generator"].step()
 
         #######################
         #    Discriminator    #
@@ -247,24 +273,8 @@ class Trainer(object):
             # discriminator loss
             p = self.model["discriminator"](y)
             p_ = self.model["discriminator"](y_.detach())
-            if not isinstance(p, list):
-                # for standard discriminator
-                real_loss = self.criterion["mse"](p, p.new_ones(p.size()))
-                fake_loss = self.criterion["mse"](p_, p_.new_zeros(p_.size()))
-                dis_loss = real_loss + fake_loss
-            else:
-                # for multi-scale discriminator
-                real_loss = 0.0
-                fake_loss = 0.0
-                for i in range(len(p)):
-                    real_loss += self.criterion["mse"](
-                        p[i][-1], p[i][-1].new_ones(p[i][-1].size()))
-                    fake_loss += self.criterion["mse"](
-                        p_[i][-1], p_[i][-1].new_zeros(p_[i][-1].size()))
-                real_loss /= (i + 1)
-                fake_loss /= (i + 1)
-                dis_loss = real_loss + fake_loss
-
+            real_loss, fake_loss = self.criterion["dis_adv"](p_, p)
+            dis_loss = real_loss + fake_loss
             self.total_train_loss["train/real_loss"] += real_loss.item()
             self.total_train_loss["train/fake_loss"] += fake_loss.item()
             self.total_train_loss["train/discriminator_loss"] += dis_loss.item()
@@ -275,7 +285,8 @@ class Trainer(object):
             if self.config["discriminator_grad_norm"] > 0:
                 torch.nn.utils.clip_grad_norm_(
                     self.model["discriminator"].parameters(),
-                    self.config["discriminator_grad_norm"])
+                    self.config["discriminator_grad_norm"],
+                )
             self.optimizer["discriminator"].step()
             self.scheduler["discriminator"].step()
 
@@ -303,8 +314,10 @@ class Trainer(object):
         # update
         self.epochs += 1
         self.train_steps_per_epoch = train_steps_per_epoch
-        logging.info(f"(Steps: {self.steps}) Finished {self.epochs} epoch training "
-                     f"({self.train_steps_per_epoch} steps per epoch).")
+        logging.info(
+            f"(Steps: {self.steps}) Finished {self.epochs} epoch training "
+            f"({self.train_steps_per_epoch} steps per epoch)."
+        )
 
         # needed for shuffle in distributed training
         if self.config["distributed"]:
@@ -326,48 +339,51 @@ class Trainer(object):
             y_mb_ = y_
             y_ = self.criterion["pqmf"].synthesis(y_mb_)
 
+        # initialize
+        aux_loss = 0.0
+
         # multi-resolution stft loss
-        sc_loss, mag_loss = self.criterion["stft"](y_.squeeze(1), y.squeeze(1))
-        aux_loss = sc_loss + mag_loss
+        if self.config["use_stft_loss"]:
+            sc_loss, mag_loss = self.criterion["stft"](y_, y)
+            aux_loss += sc_loss + mag_loss
+            self.total_eval_loss["eval/spectral_convergence_loss"] += sc_loss.item()
+            self.total_eval_loss["eval/log_stft_magnitude_loss"] += mag_loss.item()
 
         # subband multi-resolution stft loss
         if self.config.get("use_subband_stft_loss", False):
             aux_loss *= 0.5  # for balancing with subband stft loss
             y_mb = self.criterion["pqmf"].analysis(y)
-            y_mb = y_mb.view(-1, y_mb.size(2))  # (B, C, T) -> (B x C, T)
-            y_mb_ = y_mb_.view(-1, y_mb_.size(2))  # (B, C, T) -> (B x C, T)
             sub_sc_loss, sub_mag_loss = self.criterion["sub_stft"](y_mb_, y_mb)
             self.total_eval_loss[
-                "eval/sub_spectral_convergence_loss"] += sub_sc_loss.item()
+                "eval/sub_spectral_convergence_loss"
+            ] += sub_sc_loss.item()
             self.total_eval_loss[
-                "eval/sub_log_stft_magnitude_loss"] += sub_mag_loss.item()
+                "eval/sub_log_stft_magnitude_loss"
+            ] += sub_mag_loss.item()
             aux_loss += 0.5 * (sub_sc_loss + sub_mag_loss)
+
+        # mel spectrogram loss
+        if self.config["use_mel_loss"]:
+            mel_loss = self.criterion["mel"](y_, y)
+            aux_loss += mel_loss
+            self.total_eval_loss["eval/mel_loss"] += mel_loss.item()
+
+        # weighting stft loss
+        aux_loss *= self.config.get("lambda_aux", 1.0)
 
         # adversarial loss
         p_ = self.model["discriminator"](y_)
-        if not isinstance(p_, list):
-            # for standard discriminator
-            adv_loss = self.criterion["mse"](p_, p_.new_ones(p_.size()))
-            gen_loss = aux_loss + self.config["lambda_adv"] * adv_loss
-        else:
-            # for multi-scale discriminator
-            adv_loss = 0.0
-            for i in range(len(p_)):
-                adv_loss += self.criterion["mse"](
-                    p_[i][-1], p_[i][-1].new_ones(p_[i][-1].size()))
-            adv_loss /= (i + 1)
-            gen_loss = aux_loss + self.config["lambda_adv"] * adv_loss
+        adv_loss = self.criterion["gen_adv"](p_)
+        gen_loss = aux_loss + self.config["lambda_adv"] * adv_loss
 
-            # feature matching loss
-            if self.config["use_feat_match_loss"]:
-                p = self.model["discriminator"](y)
-                fm_loss = 0.0
-                for i in range(len(p_)):
-                    for j in range(len(p_[i]) - 1):
-                        fm_loss += self.criterion["l1"](p_[i][j], p[i][j])
-                fm_loss /= (i + 1) * (j + 1)
-                self.total_eval_loss["eval/feature_matching_loss"] += fm_loss.item()
-                gen_loss += self.config["lambda_adv"] * self.config["lambda_feat_match"] * fm_loss
+        # feature matching loss
+        if self.config["use_feat_match_loss"]:
+            p = self.model["discriminator"](y)
+            fm_loss = self.criterion["feat_match"](p_, p)
+            self.total_eval_loss["eval/feature_matching_loss"] += fm_loss.item()
+            gen_loss += (
+                self.config["lambda_adv"] * self.config["lambda_feat_match"] * fm_loss
+            )
 
         #######################
         #    Discriminator    #
@@ -376,28 +392,11 @@ class Trainer(object):
         p_ = self.model["discriminator"](y_)
 
         # discriminator loss
-        if not isinstance(p_, list):
-            # for standard discriminator
-            real_loss = self.criterion["mse"](p, p.new_ones(p.size()))
-            fake_loss = self.criterion["mse"](p_, p_.new_zeros(p_.size()))
-            dis_loss = real_loss + fake_loss
-        else:
-            # for multi-scale discriminator
-            real_loss = 0.0
-            fake_loss = 0.0
-            for i in range(len(p)):
-                real_loss += self.criterion["mse"](
-                    p[i][-1], p[i][-1].new_ones(p[i][-1].size()))
-                fake_loss += self.criterion["mse"](
-                    p_[i][-1], p_[i][-1].new_zeros(p_[i][-1].size()))
-            real_loss /= (i + 1)
-            fake_loss /= (i + 1)
-            dis_loss = real_loss + fake_loss
+        real_loss, fake_loss = self.criterion["dis_adv"](p_, p)
+        dis_loss = real_loss + fake_loss
 
         # add to total eval loss
         self.total_eval_loss["eval/adversarial_loss"] += adv_loss.item()
-        self.total_eval_loss["eval/spectral_convergence_loss"] += sc_loss.item()
-        self.total_eval_loss["eval/log_stft_magnitude_loss"] += mag_loss.item()
         self.total_eval_loss["eval/generator_loss"] += gen_loss.item()
         self.total_eval_loss["eval/real_loss"] += real_loss.item()
         self.total_eval_loss["eval/fake_loss"] += fake_loss.item()
@@ -411,7 +410,9 @@ class Trainer(object):
             self.model[key].eval()
 
         # calculate loss for each batch
-        for eval_steps_per_epoch, batch in enumerate(tqdm(self.data_loader["dev"], desc="[eval]"), 1):
+        for eval_steps_per_epoch, batch in enumerate(
+            tqdm(self.data_loader["dev"], desc="[eval]"), 1
+        ):
             # eval one step
             self._eval_step(batch)
 
@@ -419,13 +420,17 @@ class Trainer(object):
             if eval_steps_per_epoch == 1:
                 self._genearete_and_save_intermediate_result(batch)
 
-        logging.info(f"(Steps: {self.steps}) Finished evaluation "
-                     f"({eval_steps_per_epoch} steps per epoch).")
+        logging.info(
+            f"(Steps: {self.steps}) Finished evaluation "
+            f"({eval_steps_per_epoch} steps per epoch)."
+        )
 
         # average loss
         for key in self.total_eval_loss.keys():
             self.total_eval_loss[key] /= eval_steps_per_epoch
-            logging.info(f"(Steps: {self.steps}) {key} = {self.total_eval_loss[key]:.4f}.")
+            logging.info(
+                f"(Steps: {self.steps}) {key} = {self.total_eval_loss[key]:.4f}."
+            )
 
         # record
         self._write_to_tensorboard(self.total_eval_loss)
@@ -475,10 +480,18 @@ class Trainer(object):
             # save as wavfile
             y = np.clip(y, -1, 1)
             y_ = np.clip(y_, -1, 1)
-            sf.write(figname.replace(".png", "_ref.wav"), y,
-                     self.config["sampling_rate"], "PCM_16")
-            sf.write(figname.replace(".png", "_gen.wav"), y_,
-                     self.config["sampling_rate"], "PCM_16")
+            sf.write(
+                figname.replace(".png", "_ref.wav"),
+                y,
+                self.config["sampling_rate"],
+                "PCM_16",
+            )
+            sf.write(
+                figname.replace(".png", "_gen.wav"),
+                y_,
+                self.config["sampling_rate"],
+                "PCM_16",
+            )
 
             if idx >= self.config["num_save_intermediate_results"]:
                 break
@@ -491,7 +504,8 @@ class Trainer(object):
     def _check_save_interval(self):
         if self.steps % self.config["save_interval_steps"] == 0:
             self.save_checkpoint(
-                os.path.join(self.config["outdir"], f"checkpoint-{self.steps}steps.pkl"))
+                os.path.join(self.config["outdir"], f"checkpoint-{self.steps}steps.pkl")
+            )
             logging.info(f"Successfully saved checkpoint @ {self.steps} steps.")
 
     def _check_eval_interval(self):
@@ -502,7 +516,9 @@ class Trainer(object):
         if self.steps % self.config["log_interval_steps"] == 0:
             for key in self.total_train_loss.keys():
                 self.total_train_loss[key] /= self.config["log_interval_steps"]
-                logging.info(f"(Steps: {self.steps}) {key} = {self.total_train_loss[key]:.4f}.")
+                logging.info(
+                    f"(Steps: {self.steps}) {key} = {self.total_train_loss[key]:.4f}."
+                )
             self._write_to_tensorboard(self.total_train_loss)
 
             # reset
@@ -516,12 +532,13 @@ class Trainer(object):
 class Collater(object):
     """Customized collater for Pytorch DataLoader in training."""
 
-    def __init__(self,
-                 batch_max_steps=20480,
-                 hop_size=256,
-                 aux_context_window=2,
-                 use_noise_input=False,
-                 ):
+    def __init__(
+        self,
+        batch_max_steps=20480,
+        hop_size=256,
+        aux_context_window=2,
+        use_noise_input=False,
+    ):
         """Initialize customized collater for PyTorch DataLoader.
 
         Args:
@@ -559,19 +576,25 @@ class Collater(object):
 
         """
         # check length
-        batch = [self._adjust_length(*b) for b in batch if len(b[1]) > self.mel_threshold]
+        batch = [
+            self._adjust_length(*b) for b in batch if len(b[1]) > self.mel_threshold
+        ]
         xs, cs = [b[0] for b in batch], [b[1] for b in batch]
 
         # make batch with random cut
         c_lengths = [len(c) for c in cs]
-        start_frames = np.array([np.random.randint(
-            self.start_offset, cl + self.end_offset) for cl in c_lengths])
+        start_frames = np.array(
+            [
+                np.random.randint(self.start_offset, cl + self.end_offset)
+                for cl in c_lengths
+            ]
+        )
         x_starts = start_frames * self.hop_size
         x_ends = x_starts + self.batch_max_steps
         c_starts = start_frames - self.aux_context_window
         c_ends = start_frames + self.batch_max_frames + self.aux_context_window
-        y_batch = [x[start: end] for x, start, end in zip(xs, x_starts, x_ends)]
-        c_batch = [c[start: end] for c, start, end in zip(cs, c_starts, c_ends)]
+        y_batch = [x[start:end] for x, start, end in zip(xs, x_starts, x_ends)]
+        c_batch = [c[start:end] for c, start, end in zip(cs, c_starts, c_ends)]
 
         # convert each batch to tensor, asuume that each item in batch has the same length
         y_batch = torch.tensor(y_batch, dtype=torch.float).unsqueeze(1)  # (B, 1, T)
@@ -605,41 +628,101 @@ class Collater(object):
 def main():
     """Run training process."""
     parser = argparse.ArgumentParser(
-        description="Train Parallel WaveGAN (See detail in parallel_wavegan/bin/train.py).")
-    parser.add_argument("--train-wav-scp", default=None, type=str,
-                        help="kaldi-style wav.scp file for training. "
-                             "you need to specify either train-*-scp or train-dumpdir.")
-    parser.add_argument("--train-feats-scp", default=None, type=str,
-                        help="kaldi-style feats.scp file for training. "
-                             "you need to specify either train-*-scp or train-dumpdir.")
-    parser.add_argument("--train-segments", default=None, type=str,
-                        help="kaldi-style segments file for training.")
-    parser.add_argument("--train-dumpdir", default=None, type=str,
-                        help="directory including training data. "
-                             "you need to specify either train-*-scp or train-dumpdir.")
-    parser.add_argument("--dev-wav-scp", default=None, type=str,
-                        help="kaldi-style wav.scp file for validation. "
-                             "you need to specify either dev-*-scp or dev-dumpdir.")
-    parser.add_argument("--dev-feats-scp", default=None, type=str,
-                        help="kaldi-style feats.scp file for vaidation. "
-                             "you need to specify either dev-*-scp or dev-dumpdir.")
-    parser.add_argument("--dev-segments", default=None, type=str,
-                        help="kaldi-style segments file for validation.")
-    parser.add_argument("--dev-dumpdir", default=None, type=str,
-                        help="directory including development data. "
-                             "you need to specify either dev-*-scp or dev-dumpdir.")
-    parser.add_argument("--outdir", type=str, required=True,
-                        help="directory to save checkpoints.")
-    parser.add_argument("--config", type=str, required=True,
-                        help="yaml format configuration file.")
-    parser.add_argument("--pretrain", default="", type=str, nargs="?",
-                        help="checkpoint file path to load pretrained params. (default=\"\")")
-    parser.add_argument("--resume", default="", type=str, nargs="?",
-                        help="checkpoint file path to resume training. (default=\"\")")
-    parser.add_argument("--verbose", type=int, default=1,
-                        help="logging level. higher is more logging. (default=1)")
-    parser.add_argument("--rank", "--local_rank", default=0, type=int,
-                        help="rank for distributed training. no need to explictly specify.")
+        description="Train Parallel WaveGAN (See detail in parallel_wavegan/bin/train.py)."
+    )
+    parser.add_argument(
+        "--train-wav-scp",
+        default=None,
+        type=str,
+        help="kaldi-style wav.scp file for training. "
+        "you need to specify either train-*-scp or train-dumpdir.",
+    )
+    parser.add_argument(
+        "--train-feats-scp",
+        default=None,
+        type=str,
+        help="kaldi-style feats.scp file for training. "
+        "you need to specify either train-*-scp or train-dumpdir.",
+    )
+    parser.add_argument(
+        "--train-segments",
+        default=None,
+        type=str,
+        help="kaldi-style segments file for training.",
+    )
+    parser.add_argument(
+        "--train-dumpdir",
+        default=None,
+        type=str,
+        help="directory including training data. "
+        "you need to specify either train-*-scp or train-dumpdir.",
+    )
+    parser.add_argument(
+        "--dev-wav-scp",
+        default=None,
+        type=str,
+        help="kaldi-style wav.scp file for validation. "
+        "you need to specify either dev-*-scp or dev-dumpdir.",
+    )
+    parser.add_argument(
+        "--dev-feats-scp",
+        default=None,
+        type=str,
+        help="kaldi-style feats.scp file for vaidation. "
+        "you need to specify either dev-*-scp or dev-dumpdir.",
+    )
+    parser.add_argument(
+        "--dev-segments",
+        default=None,
+        type=str,
+        help="kaldi-style segments file for validation.",
+    )
+    parser.add_argument(
+        "--dev-dumpdir",
+        default=None,
+        type=str,
+        help="directory including development data. "
+        "you need to specify either dev-*-scp or dev-dumpdir.",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        required=True,
+        help="directory to save checkpoints.",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="yaml format configuration file.",
+    )
+    parser.add_argument(
+        "--pretrain",
+        default="",
+        type=str,
+        nargs="?",
+        help='checkpoint file path to load pretrained params. (default="")',
+    )
+    parser.add_argument(
+        "--resume",
+        default="",
+        type=str,
+        nargs="?",
+        help='checkpoint file path to resume training. (default="")',
+    )
+    parser.add_argument(
+        "--verbose",
+        type=int,
+        default=1,
+        help="logging level. higher is more logging. (default=1)",
+    )
+    parser.add_argument(
+        "--rank",
+        "--local_rank",
+        default=0,
+        type=int,
+        help="rank for distributed training. no need to explictly specify.",
+    )
     args = parser.parse_args()
 
     args.distributed = False
@@ -666,16 +749,22 @@ def main():
     # set logger
     if args.verbose > 1:
         logging.basicConfig(
-            level=logging.DEBUG, stream=sys.stdout,
-            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.DEBUG,
+            stream=sys.stdout,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
     elif args.verbose > 0:
         logging.basicConfig(
-            level=logging.INFO, stream=sys.stdout,
-            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.INFO,
+            stream=sys.stdout,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
     else:
         logging.basicConfig(
-            level=logging.WARN, stream=sys.stdout,
-            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.WARN,
+            stream=sys.stdout,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
         logging.warning("Skip DEBUG/INFO messages")
 
     # check directory existence
@@ -683,11 +772,13 @@ def main():
         os.makedirs(args.outdir)
 
     # check arguments
-    if (args.train_feats_scp is not None and args.train_dumpdir is not None) or \
-            (args.train_feats_scp is None and args.train_dumpdir is None):
+    if (args.train_feats_scp is not None and args.train_dumpdir is not None) or (
+        args.train_feats_scp is None and args.train_dumpdir is None
+    ):
         raise ValueError("Please specify either --train-dumpdir or --train-*-scp.")
-    if (args.dev_feats_scp is not None and args.dev_dumpdir is not None) or \
-            (args.dev_feats_scp is None and args.dev_dumpdir is None):
+    if (args.dev_feats_scp is not None and args.dev_dumpdir is not None) or (
+        args.dev_feats_scp is None and args.dev_dumpdir is None
+    ):
         raise ValueError("Please specify either --dev-dumpdir or --dev-*-scp.")
 
     # load and save config
@@ -702,8 +793,9 @@ def main():
 
     # get dataset
     if config["remove_short_samples"]:
-        mel_length_threshold = config["batch_max_steps"] // config["hop_size"] + \
-            2 * config["generator_params"].get("aux_context_window", 0)
+        mel_length_threshold = config["batch_max_steps"] // config[
+            "hop_size"
+        ] + 2 * config["generator_params"].get("aux_context_window", 0)
     else:
         mel_length_threshold = None
     if args.train_wav_scp is None or args.dev_wav_scp is None:
@@ -767,13 +859,14 @@ def main():
         # keep compatibility
         aux_context_window=config["generator_params"].get("aux_context_window", 0),
         # keep compatibility
-        use_noise_input=config.get(
-            "generator_type", "ParallelWaveGANGenerator") != "MelGANGenerator",
+        use_noise_input=config.get("generator_type", "ParallelWaveGANGenerator")
+        in ["ParallelWaveGANGenerator"],
     )
     sampler = {"train": None, "dev": None}
     if args.distributed:
         # setup sampler for distributed training
         from torch.utils.data.distributed import DistributedSampler
+
         sampler["train"] = DistributedSampler(
             dataset=dataset["train"],
             num_replicas=args.world_size,
@@ -807,7 +900,7 @@ def main():
         ),
     }
 
-    # define models and optimizers
+    # define models
     generator_class = getattr(
         parallel_wavegan.models,
         # keep compatibility
@@ -820,27 +913,71 @@ def main():
     )
     model = {
         "generator": generator_class(
-            **config["generator_params"]).to(device),
+            **config["generator_params"],
+        ).to(device),
         "discriminator": discriminator_class(
-            **config["discriminator_params"]).to(device),
+            **config["discriminator_params"],
+        ).to(device),
     }
+
+    # define criterions
     criterion = {
-        "stft": MultiResolutionSTFTLoss(
-            **config["stft_loss_params"]).to(device),
-        "mse": torch.nn.MSELoss().to(device),
-    }
-    if config.get("use_feat_match_loss", False):  # keep compatibility
-        criterion["l1"] = torch.nn.L1Loss().to(device)
-    if config["generator_params"]["out_channels"] > 1:
-        criterion["pqmf"] = PQMF(
-            subbands=config["generator_params"]["out_channels"],
+        "gen_adv": GeneratorAdversarialLoss(
             # keep compatibility
-            **config.get("pqmf_params", {})
+            **config.get("generator_adv_loss_params", {})
+        ).to(device),
+        "dis_adv": DiscriminatorAdversarialLoss(
+            # keep compatibility
+            **config.get("discriminator_adv_loss_params", {})
+        ).to(device),
+    }
+    if config.get("use_stft_loss", True):  # keep compatibility
+        config["use_stft_loss"] = True
+        criterion["stft"] = MultiResolutionSTFTLoss(
+            **config["stft_loss_params"],
         ).to(device)
     if config.get("use_subband_stft_loss", False):  # keep compatibility
         assert config["generator_params"]["out_channels"] > 1
         criterion["sub_stft"] = MultiResolutionSTFTLoss(
-            **config["subband_stft_loss_params"]).to(device)
+            **config["subband_stft_loss_params"],
+        ).to(device)
+    else:
+        config["use_subband_stft_loss"] = False
+    if config.get("use_feat_match_loss", False):  # keep compatibility
+        criterion["feat_match"] = FeatureMatchLoss(
+            # keep compatibility
+            **config.get("feat_match_loss_params", {}),
+        ).to(device)
+    else:
+        config["use_feat_match_loss"] = False
+    if config.get("use_mel_loss", False):  # keep compatibility
+        if config.get("mel_loss_params", None) is None:
+            criterion["mel"] = MelSpectrogramLoss(
+                fs=config["sampling_rate"],
+                fft_size=config["fft_size"],
+                hop_size=config["hop_size"],
+                win_length=config["win_length"],
+                window=config["window"],
+                num_mels=config["num_mels"],
+                fmin=config["fmin"],
+                fmax=config["fmax"],
+            ).to(device)
+        else:
+            criterion["mel"] = MelSpectrogramLoss(
+                **config["mel_loss_params"],
+            ).to(device)
+    else:
+        config["use_mel_loss"] = False
+
+    # define special module for subband processing
+    if config["generator_params"]["out_channels"] > 1:
+        criterion["pqmf"] = PQMF(
+            subbands=config["generator_params"]["out_channels"],
+            # keep compatibility
+            **config.get("pqmf_params", {}),
+        ).to(device)
+
+    # define optimizers and schedulers
     generator_optimizer_class = getattr(
         parallel_wavegan.optimizers,
         # keep compatibility
@@ -886,11 +1023,21 @@ def main():
         try:
             from apex.parallel import DistributedDataParallel
         except ImportError:
-            raise ImportError("apex is not installed. please check https://github.com/NVIDIA/apex.")
+            raise ImportError(
+                "apex is not installed. please check https://github.com/NVIDIA/apex."
+            )
         model["generator"] = DistributedDataParallel(model["generator"])
         model["discriminator"] = DistributedDataParallel(model["discriminator"])
+
+    # show settings
     logging.info(model["generator"])
     logging.info(model["discriminator"])
+    logging.info(optimizer["generator"])
+    logging.info(optimizer["discriminator"])
+    logging.info(scheduler["generator"])
+    logging.info(scheduler["discriminator"])
+    for criterion_ in criterion.values():
+        logging.info(criterion_)
 
     # define trainer
     trainer = Trainer(
@@ -919,9 +1066,10 @@ def main():
     # run training loop
     try:
         trainer.run()
-    except KeyboardInterrupt:
+    finally:
         trainer.save_checkpoint(
-            os.path.join(config["outdir"], f"checkpoint-{trainer.steps}steps.pkl"))
+            os.path.join(config["outdir"], f"checkpoint-{trainer.steps}steps.pkl")
+        )
         logging.info(f"Successfully saved checkpoint @ {trainer.steps}steps.")
 
 

@@ -28,34 +28,74 @@ def main():
     """Run decoding process."""
     parser = argparse.ArgumentParser(
         description="Decode dumped features with trained Parallel WaveGAN Generator "
-                    "(See detail in parallel_wavegan/bin/decode.py).")
-    parser.add_argument("--feats-scp", "--scp", default=None, type=str,
-                        help="kaldi-style feats.scp file. "
-                             "you need to specify either feats-scp or dumpdir.")
-    parser.add_argument("--dumpdir", default=None, type=str,
-                        help="directory including feature files. "
-                             "you need to specify either feats-scp or dumpdir.")
-    parser.add_argument("--outdir", type=str, required=True,
-                        help="directory to save generated speech.")
-    parser.add_argument("--checkpoint", type=str, required=True,
-                        help="checkpoint file to be loaded.")
-    parser.add_argument("--config", default=None, type=str,
-                        help="yaml format configuration file. if not explicitly provided, "
-                             "it will be searched in the checkpoint directory. (default=None)")
-    parser.add_argument("--verbose", type=int, default=1,
-                        help="logging level. higher is more logging. (default=1)")
+        "(See detail in parallel_wavegan/bin/decode.py)."
+    )
+    parser.add_argument(
+        "--feats-scp",
+        "--scp",
+        default=None,
+        type=str,
+        help="kaldi-style feats.scp file. "
+        "you need to specify either feats-scp or dumpdir.",
+    )
+    parser.add_argument(
+        "--dumpdir",
+        default=None,
+        type=str,
+        help="directory including feature files. "
+        "you need to specify either feats-scp or dumpdir.",
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        required=True,
+        help="directory to save generated speech.",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        required=True,
+        help="checkpoint file to be loaded.",
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        type=str,
+        help="yaml format configuration file. if not explicitly provided, "
+        "it will be searched in the checkpoint directory. (default=None)",
+    )
+    parser.add_argument(
+        "--normalize-before",
+        default=False,
+        action="store_true",
+        help="whether to perform feature normalization before input to the model. "
+        "if true, it assumes that the feature is de-normalized. this is useful when "
+        "text2mel model and vocoder use different feature statistics.",
+    )
+    parser.add_argument(
+        "--verbose",
+        type=int,
+        default=1,
+        help="logging level. higher is more logging. (default=1)",
+    )
     args = parser.parse_args()
 
     # set logger
     if args.verbose > 1:
         logging.basicConfig(
-            level=logging.DEBUG, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.DEBUG,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
     elif args.verbose > 0:
         logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.INFO,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
     else:
         logging.basicConfig(
-            level=logging.WARN, format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+            level=logging.WARN,
+            format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s",
+        )
         logging.warning("Skip DEBUG/INFO messages")
 
     # check directory existence
@@ -71,8 +111,9 @@ def main():
     config.update(vars(args))
 
     # check arguments
-    if (args.feats_scp is not None and args.dumpdir is not None) or \
-            (args.feats_scp is None and args.dumpdir is None):
+    if (args.feats_scp is not None and args.dumpdir is not None) or (
+        args.feats_scp is None and args.dumpdir is None
+    ):
         raise ValueError("Please specify either --dumpdir or --feats-scp.")
 
     # get dataset
@@ -105,6 +146,9 @@ def main():
         device = torch.device("cpu")
     model = load_model(args.checkpoint, config)
     logging.info(f"Loaded model parameters from {args.checkpoint}.")
+    if args.normalize_before:
+        assert hasattr(model, "mean"), "Feature stats are not registered."
+        assert hasattr(model, "scale"), "Feature stats are not registered."
     model.remove_weight_norm()
     model = model.eval().to(device)
 
@@ -115,17 +159,23 @@ def main():
             # generate
             c = torch.tensor(c, dtype=torch.float).to(device)
             start = time.time()
-            y = model.inference(c).view(-1)
+            y = model.inference(c, normalize_before=args.normalize_before).view(-1)
             rtf = (time.time() - start) / (len(y) / config["sampling_rate"])
             pbar.set_postfix({"RTF": rtf})
             total_rtf += rtf
 
             # save as PCM 16 bit wav file
-            sf.write(os.path.join(config["outdir"], f"{utt_id}_gen.wav"),
-                     y.cpu().numpy(), config["sampling_rate"], "PCM_16")
+            sf.write(
+                os.path.join(config["outdir"], f"{utt_id}_gen.wav"),
+                y.cpu().numpy(),
+                config["sampling_rate"],
+                "PCM_16",
+            )
 
     # report average RTF
-    logging.info(f"Finished generation of {idx} utterances (RTF = {total_rtf / idx:.03f}).")
+    logging.info(
+        f"Finished generation of {idx} utterances (RTF = {total_rtf / idx:.03f})."
+    )
 
 
 if __name__ == "__main__":

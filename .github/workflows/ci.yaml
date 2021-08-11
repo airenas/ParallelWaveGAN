@@ -12,12 +12,13 @@ on:
 
 jobs:
   linter_and_test:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-20.04
     strategy:
-      max-parallel: 10
+      max-parallel: 5
       matrix:
         python-version: [3.6]
-        pytorch-version: [1.0.1, 1.1, 1.2, 1.3.1, 1.4, 1.5.1]
+        # 1.6 is failed on cpu: https://github.com/kan-bayashi/ParallelWaveGAN/issues/198
+        pytorch-version: [1.4, 1.5.1, 1.7.1, 1.8.1, 1.9]
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v2
@@ -32,33 +33,34 @@ jobs:
             ${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.pytorch-version }}-pip-
       - name: Install dependencies
         run: |
-          # install python modules
-          python -m pip install --upgrade pip
-          pip install -q -U numpy
-          pip install -q torch==${{ matrix.pytorch-version }} -f https://download.pytorch.org/whl/cpu/stable.html
-          pip install -q -e .
-          pip install -q -e .[test]
+          sudo apt-get install libsndfile-dev
+          # make python env
+          cd tools; make CUDA_VERSION="" PYTHON=python${{ matrix.python-version }} PYTORCH_VERSION=${{ matrix.pytorch-version }}
           # install shell check
           wget https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
           tar -xvf shellcheck-stable.linux.x86_64.tar.xz
       - name: ShellCheck
         run: |
           export PATH=shellcheck-stable:$PATH
-          find egs -name "*.sh" | while read line; do shellcheck -x --shell=bash -P $(dirname $line) ${line}; done
-      - name: Flake8
+          find egs -name "*.sh" | grep -v path.sh | while read line; do shellcheck -x --shell=bash -P $(dirname $line) ${line}; done
+      - name: Black & Flake8
         run: |
+          source tools/venv/bin/activate
+          black --diff parallel_wavegan
           flake8 parallel_wavegan
+          flake8 --extend-ignore=D test
       - name: Pytest
         run: |
+          source tools/venv/bin/activate
           pytest test
 
   integration:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
-      max-parallel: 5
+      max-parallel: 10
       matrix:
         python-version: [3.7]
-        pytorch-version: [1.5.1]
+        pytorch-version: [1.9]
         config:
           - "parallel_wavegan.v1.debug.yaml"
           - "melgan.v1.debug.yaml"
@@ -66,6 +68,8 @@ jobs:
           - "multi_band_melgan.v1.debug.yaml"
           - "parallel_wavegan.v1.debug.npy.yaml"
           - "parallel_wavegan.v1.debug.diff_fs.yaml"
+          - "hifigan.v1.debug.yaml"
+          - "style_melgan.v1.debug.yaml"
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v2
@@ -81,11 +85,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get install libsndfile-dev jq
-          # install python modules
-          python -m pip install --upgrade pip
-          pip install -q -U numpy
-          pip install -q torch==${{ matrix.pytorch-version }} -f https://download.pytorch.org/whl/cpu/stable.html
-          pip install -q -e .
+          # make python env
+          cd tools; make CUDA_VERSION="" PYTHON=python${{ matrix.python-version }} PYTORCH_VERSION=${{ matrix.pytorch-version }}
       - name: Integration
         run: |
           cd egs/yesno/voc1 && ./run.sh --conf conf/${{ matrix.config }}
