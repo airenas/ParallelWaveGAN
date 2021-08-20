@@ -14,7 +14,7 @@ n_gpus=1       # number of gpus in training
 n_jobs=16      # number of parallel jobs in feature extraction
 
 # NOTE(kan-bayashi): renamed to conf to avoid conflict in parse_options.sh
-conf=conf/hifigan.v1.yaml
+conf=conf/style_melgan.v1.yaml
 
 # directory path setting
 download_dir=downloads # direcotry to save downloaded files
