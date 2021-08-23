@@ -18,7 +18,7 @@ conf=${train_config}
 
 # directory path setting
 download_dir=downloads # direcotry to save downloaded files
-dumpdir=dump           # directory to dump features
+dumpdir=${dump_dir}           # directory to dump features
 
 # training related setting
 tag=""     # tag for directory to save model
