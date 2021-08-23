@@ -17,6 +17,7 @@ exp?=$(trans_type)_train_no_dev_pytorch_train_pytorch_tacotron2
 cuda?=0
 n_jobs?=16
 train_config?=conf/style_melgan.v1.yaml
+tmp_dump_dir?=~/dump
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
