@@ -80,7 +80,7 @@ clean-data:
 	rm -rf $(work_dir)/downloads
 #####################################################################################
 fix-failing-step1:
-	python $(CONDA_PREFIX)/bin/parallel-wavegan-preprocess --config $(train_config) --scp dump/train_nodev/raw/wav.$(f-num).scp --dumpdir ~/dump/$(f-num) --verbose 1
+	python $(CONDA_PREFIX)/bin/parallel-wavegan-preprocess --config $(train_config) --scp dump/train_nodev/raw/wav.$(f-num).scp --dumpdir ~/dump/dump.$(f-num) --verbose 1
 	cp -r ~/dump/dump.$(f-num) dump/train_nodev/raw
 	echo Done
 #####################################################################################
