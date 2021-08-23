@@ -14,7 +14,7 @@ n_gpus=1       # number of gpus in training
 n_jobs=16      # number of parallel jobs in feature extraction
 
 # NOTE(kan-bayashi): renamed to conf to avoid conflict in parse_options.sh
-conf=conf/style_melgan.v1.yaml
+conf=${train_config}
 
 # directory path setting
 download_dir=downloads # direcotry to save downloaded files
@@ -38,6 +38,8 @@ dev_set="dev"           # name of development data direcotry
 eval_set="eval"         # name of evaluation data direcotry
 
 set -euo pipefail
+
+echo "Train config: ${conf}"
 
 if [ "${stage}" -le -1 ] && [ "${stop_stage}" -ge -1 ]; then
     echo "Stage -1: Data download"
