@@ -66,12 +66,7 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
         echo "Feature extraction start. See the progress via ${dumpdir}/${name}/raw/preprocessing.*.log."
         utils/make_subset_data.sh "data/${name}" "${n_jobs}" "${dumpdir}/${name}/raw"
         ${train_cmd} JOB=1:${n_jobs} "${dumpdir}/${name}/raw/preprocessing.JOB.log" \
-            parallel-wavegan-preprocess \
-                --config "${conf}" \
-                --scp "${dumpdir}/${name}/raw/wav.JOB.scp" \
-                --dumpdir "${tmp_dump_dir}/${name}/raw/dump.JOB" \
-                --verbose "${verbose}"; \
-                mv "${tmp_dump_dir}/${name}/raw/dump.JOB" "${dumpdir}/${name}/raw"
+            make preprocess dump_dir="${dumpdir}/${name}/raw" f_num="JOB" verbose="${verbose}"
         echo "Successfully finished feature extraction of ${name} set."
     ) &
     pids+=($!)

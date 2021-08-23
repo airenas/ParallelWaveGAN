@@ -80,10 +80,13 @@ clean-data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/downloads
 #####################################################################################
-fix-failing-step1:
-	python $(CONDA_PREFIX)/bin/parallel-wavegan-preprocess --config $(train_config) --scp dump/train_nodev/raw/wav.$(f-num).scp --dumpdir ~/dump/dump.$(f-num) --verbose 1
-	cp -r ~/dump/dump.$(f-num) dump/train_nodev/raw
-	echo Done
+preprocess: 
+	parallel-wavegan-preprocess \
+                --config "$(train_config)" \
+                --scp "$(dump_dir)/wav.$(f-num).scp" \
+                --dumpdir "${tmp_dump_dir}/$(dump_dir)/dump.$(f-num)" \
+                --verbose "$(verbose)"
+	mv -r ${tmp_dump_dir}/$(dump_dir)/dump.$(f-num) $(dump_dir)
 #####################################################################################
 
 .EXPORT_ALL_VARIABLES:	
