@@ -15,6 +15,7 @@ exp_dir?=exp/train_nodev_ljspeech_parallel_wavegan.v3
 trans_type?=char
 exp?=$(trans_type)_train_no_dev_pytorch_train_pytorch_tacotron2
 cuda?=0
+n_jobs?=16
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
