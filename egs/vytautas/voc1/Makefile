@@ -16,6 +16,7 @@ trans_type?=char
 exp?=$(trans_type)_train_no_dev_pytorch_train_pytorch_tacotron2
 cuda?=0
 n_jobs?=16
+train_config?=conf/style_melgan.v1.yaml
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
@@ -78,4 +79,10 @@ clean-data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/downloads
 #####################################################################################
+fix-failing-step1:
+	python $(CONDA_PREFIX)/bin/parallel-wavegan-preprocess --config $(train_config) --scp dump/train_nodev/raw/wav.$(f-num).scp --dumpdir ~/dump/$(f-num) --verbose 1
+	cp -r ~/dump/dump.$(f-num) dump/train_nodev/raw
+	echo Done
+#####################################################################################
+
 .EXPORT_ALL_VARIABLES:	
