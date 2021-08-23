@@ -83,10 +83,19 @@ clean-data:
 preprocess: 
 	parallel-wavegan-preprocess \
                 --config "$(train_config)" \
-                --scp "$(dump_dir)/wav.$(f-num).scp" \
-                --dumpdir "${tmp_dump_dir}/$(dump_dir)/dump.$(f-num)" \
+                --scp "$(dump_dir)/wav.$(f_num).scp" \
+                --dumpdir "$(tmp_dump_dir)/$(dump_dir)/dump.$(f_num)" \
                 --verbose "$(verbose)"
-	mv -r ${tmp_dump_dir}/$(dump_dir)/dump.$(f-num) $(dump_dir)
+	mv $(tmp_dump_dir)/$(dump_dir)/dump.$(f_num) $(dump_dir)
+
+normalize:
+	parallel-wavegan-normalize \
+                --config "$(train_config)" \
+                --stats "$(stats)" \
+                --rootdir "$(norm_dir)/raw/dump.$(f_num)" \
+                --dumpdir "$(tmp_dump_dir)/$(norm_dir)/norm/dump.$(f_num)" \
+                --verbose "$(verbose)"
+	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$(f_num) $(norm_dir)/norm		
 #####################################################################################
 
 .EXPORT_ALL_VARIABLES:	

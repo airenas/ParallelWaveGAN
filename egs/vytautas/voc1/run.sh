@@ -93,12 +93,8 @@ if [ "${stage}" -le 21 ] && [ "${stop_stage}" -ge 21 ]; then
         [ ! -e "${dumpdir}/${name}/norm" ] && mkdir -p "${dumpdir}/${name}/norm"
         echo "Nomalization start. See the progress via ${dumpdir}/${name}/norm/normalize.*.log."
         ${train_cmd} JOB=1:${n_jobs} "${dumpdir}/${name}/norm/normalize.JOB.log" \
-            parallel-wavegan-normalize \
-                --config "${conf}" \
-                --stats "${dumpdir}/${train_set}/stats.${stats_ext}" \
-                --rootdir "${dumpdir}/${name}/raw/dump.JOB" \
-                --dumpdir "${dumpdir}/${name}/norm/dump.JOB" \
-                --verbose "${verbose}"
+            make normalize norm_dir="${dumpdir}/${name}" f_num="JOB" verbose="${verbose}" \
+                stats="${dumpdir}/${train_set}/stats.${stats_ext}"
         echo "Successfully finished normalization of ${name} set."
     ) &
     pids+=($!)
