@@ -38,7 +38,6 @@ ssh:
 #####################################################################################
 prepare: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage -1 --stop-stage 1
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 21 --stop-stage 21
 #####################################################################################
 train: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2
@@ -92,14 +91,14 @@ preprocess-%:
                 --verbose "$(verbose)" 2>&1 > $(dump_dir)/preprocessing.$*.log
 	mv $(tmp_dump_dir)/$(dump_dir)/dump.$* $(dump_dir)
 
-normalize:
+normalize-%:
 	parallel-wavegan-normalize \
                 --config "$(train_config)" \
                 --stats "$(stats)" \
-                --rootdir "$(norm_dir)/raw/dump.$(f_num)" \
-                --dumpdir "$(tmp_dump_dir)/$(norm_dir)/norm/dump.$(f_num)" \
-                --verbose "$(verbose)"
-	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$(f_num) $(norm_dir)/norm		
+                --rootdir "$(norm_dir)/raw/dump.$*" \
+                --dumpdir "$(tmp_dump_dir)/$(norm_dir)/norm/dump.$*" \
+                --verbose "$(verbose)" > $(norm_dir)/norm/normalize.$*.log 2>&1
+	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$* $(norm_dir)/norm		
 #####################################################################################
 
 .EXPORT_ALL_VARIABLES:	
