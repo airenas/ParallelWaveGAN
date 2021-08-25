@@ -91,7 +91,7 @@ discriminator_adv_loss_params:
 ###########################################################
 #                  DATA LOADER SETTING                    #
 ###########################################################
-batch_size: 32              # Batch size.
+batch_size: 16              # Batch size.
 batch_max_steps: 22528      # Length of each audio in batch. Make sure dividable by hop_size.
 pin_memory: true            # Whether to pin memory in Pytorch DataLoader.
 num_workers: 2              # Number of workers in Pytorch DataLoader.
