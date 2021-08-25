@@ -66,7 +66,7 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
         echo "Feature extraction start. See the progress via ${dumpdir}/${name}/raw/preprocessing.*.log."
         tmp_s=""
         utils/make_subset_data.sh "data/${name}" "${n_jobs}" "${dumpdir}/${name}/raw"
-        for i in {1..${n_jobs}}; do tmp_s="${tmp_s} preprocess-${i}"; done
+        for i in `eval echo {1..${n_jobs}}`; do tmp_s="${tmp_s} preprocess-${i}"; done
         make ${tmp_s} dump_dir="${dumpdir}/${name}/raw" verbose="${verbose}"
         echo "Successfully finished feature extraction of ${name} set."
     ) &
