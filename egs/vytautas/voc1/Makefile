@@ -88,7 +88,7 @@ preprocess-%:
                 --config "$(train_config)" \
                 --scp "$(dump_dir)/wav.$*.scp" \
                 --dumpdir "$(tmp_dump_dir)/$(dump_dir)/dump.$*" \
-                --verbose "$(verbose)" 2>&1 > $(dump_dir)/preprocessing.$*.log
+                --verbose "$(verbose)" 2>&1 | tee $(dump_dir)/preprocessing.$*.log
 	mv $(tmp_dump_dir)/$(dump_dir)/dump.$* $(dump_dir)
 
 normalize-%:
@@ -97,7 +97,7 @@ normalize-%:
                 --stats "$(stats)" \
                 --rootdir "$(norm_dir)/raw/dump.$*" \
                 --dumpdir "$(tmp_dump_dir)/$(norm_dir)/norm/dump.$*" \
-                --verbose "$(verbose)" > $(norm_dir)/norm/normalize.$*.log 2>&1
+                --verbose "$(verbose)" 2>&1 | tee $(norm_dir)/norm/normalize.$*.log 
 	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$* $(norm_dir)/norm		
 #####################################################################################
 
