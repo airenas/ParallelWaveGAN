@@ -83,13 +83,13 @@ clean-data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/downloads
 #####################################################################################
-preprocess: 
+preprocess-%: 
 	parallel-wavegan-preprocess \
                 --config "$(train_config)" \
-                --scp "$(dump_dir)/wav.$(f_num).scp" \
-                --dumpdir "$(tmp_dump_dir)/$(dump_dir)/dump.$(f_num)" \
-                --verbose "$(verbose)"
-	mv $(tmp_dump_dir)/$(dump_dir)/dump.$(f_num) $(dump_dir)
+                --scp "$(dump_dir)/wav.$*.scp" \
+                --dumpdir "$(tmp_dump_dir)/$(dump_dir)/dump.$*" \
+                --verbose "$(verbose)" > $(dump_dir)/preprocessing.$*.log
+	mv $(tmp_dump_dir)/$(dump_dir)/dump.$* $(dump_dir)
 
 normalize:
 	parallel-wavegan-normalize \
