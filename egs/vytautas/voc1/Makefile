@@ -61,14 +61,14 @@ train-many:
 put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
-final_name=vytautas.pwg.01-$(steps)
+final_name=vytautas.pwg.v02-$(steps)
 final_model=$(CURDIR)/$(final_name).tar.gz
 prepare_dir=prepared
 $(prepare_dir)/$(final_name):
 	mkdir -p $@
 $(prepare_dir)/$(final_name)/%: $(exp_dir)/% | $(prepare_dir)/$(final_name)
 	cp $< $@
-$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml
+$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
 	touch $@
 $(final_model): $(prepare_dir)/.done
 	cd $(prepare_dir) && tar -czvf $@ $(final_name)
