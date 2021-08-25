@@ -20,6 +20,7 @@ train_config?=conf/style_melgan.v1.yaml
 # need full path
 tmp_dump_dir?=~/dump 
 dump_dir?=dump
+m_jobs?=10
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
@@ -88,7 +89,7 @@ preprocess-%:
                 --config "$(train_config)" \
                 --scp "$(dump_dir)/wav.$*.scp" \
                 --dumpdir "$(tmp_dump_dir)/$(dump_dir)/dump.$*" \
-                --verbose "$(verbose)" > $(dump_dir)/preprocessing.$*.log
+                --verbose "$(verbose)" 2>&1 > $(dump_dir)/preprocessing.$*.log
 	mv $(tmp_dump_dir)/$(dump_dir)/dump.$* $(dump_dir)
 
 normalize:

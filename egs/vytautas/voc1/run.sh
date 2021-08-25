@@ -12,6 +12,7 @@ stop_stage=100 # stage to stop
 verbose=1      # verbosity level (lower is less info)
 n_gpus=1       # number of gpus in training
 n_jobs=${n_jobs}      # number of parallel jobs in feature extraction
+m_jobs=${m_jobs}
 
 # NOTE(kan-bayashi): renamed to conf to avoid conflict in parse_options.sh
 conf=${train_config}
@@ -67,7 +68,7 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
         tmp_s=""
         utils/make_subset_data.sh "data/${name}" "${n_jobs}" "${dumpdir}/${name}/raw"
         for i in `eval echo {1..${n_jobs}}`; do tmp_s="${tmp_s} preprocess-${i}"; done
-        make ${tmp_s} dump_dir="${dumpdir}/${name}/raw" verbose="${verbose}"
+        make ${tmp_s} dump_dir="${dumpdir}/${name}/raw" verbose="${verbose}" -j ${m_jobs}
         echo "Successfully finished feature extraction of ${name} set."
     ) &
     pids+=($!)
