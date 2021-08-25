@@ -65,8 +65,8 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
     (
         [ ! -e "${dumpdir}/${name}/raw" ] && mkdir -p "${dumpdir}/${name}/raw"
         echo "Feature extraction start. See the progress via ${dumpdir}/${name}/raw/preprocessing.*.log."
-        tmp_s=""
         utils/make_subset_data.sh "data/${name}" "${n_jobs}" "${dumpdir}/${name}/raw"
+        tmp_s=""
         for i in `eval echo {1..${n_jobs}}`; do tmp_s="${tmp_s} preprocess-${i}"; done
         make ${tmp_s} dump_dir="${dumpdir}/${name}/raw" verbose="${verbose}" -j ${m_jobs}
         echo "Successfully finished feature extraction of ${name} set."
@@ -86,17 +86,18 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
             --dumpdir "${dumpdir}/${train_set}" \
             --verbose "${verbose}"
     echo "Successfully finished calculation of statistics."
-fi
-if [ "${stage}" -le 21 ] && [ "${stop_stage}" -ge 21 ]; then
+
     # normalize and dump them
     pids=()
     for name in "${train_set}" "${dev_set}" "${eval_set}"; do
     (
         [ ! -e "${dumpdir}/${name}/norm" ] && mkdir -p "${dumpdir}/${name}/norm"
         echo "Nomalization start. See the progress via ${dumpdir}/${name}/norm/normalize.*.log."
-        ${train_cmd} JOB=1:${n_jobs} "${dumpdir}/${name}/norm/normalize.JOB.log" \
-            make normalize norm_dir="${dumpdir}/${name}" f_num="JOB" verbose="${verbose}" \
-                stats="${dumpdir}/${train_set}/stats.${stats_ext}"
+        tmp_s=""
+        for i in `eval echo {1..${n_jobs}}`; do tmp_s="${tmp_s} normalize-${i}"; done
+        # ${train_cmd} JOB=1:${n_jobs} "${dumpdir}/${name}/norm/normalize.JOB.log" \
+        make ${tmp_s} norm_dir="${dumpdir}/${name}" verbose="${verbose}" stats="${dumpdir}/${train_set}/stats.${stats_ext}" \
+            -j ${m_jobs}
         echo "Successfully finished normalization of ${name} set."
     ) &
     pids+=($!)
