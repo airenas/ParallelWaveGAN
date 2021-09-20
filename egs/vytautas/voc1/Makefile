@@ -61,7 +61,8 @@ train-many:
 put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
-final_name=vytautas.pwg.v02-$(steps)
+final-model-name?=pwg.v02
+final_name?=vytautas.$(final-model-name)-$(steps)
 final_model=$(CURDIR)/$(final_name).tar.gz
 prepare_dir=prepared
 $(prepare_dir)/$(final_name):
