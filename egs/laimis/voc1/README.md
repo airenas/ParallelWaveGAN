@@ -2,6 +2,8 @@
 
 ```bash
 make prepare && make train
+## or 
+make prepare && nohup make train > v01.log &
 ```
 
 ## Pack model
