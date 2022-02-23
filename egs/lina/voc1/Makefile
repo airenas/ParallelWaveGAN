@@ -62,7 +62,7 @@ put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
 final_model_name?=style.v01
-final_name?=laimis.$(final_model_name)-$(steps)
+final_name?=lina.$(final_model_name)-$(steps)
 final_model=$(CURDIR)/$(final_name).tar.gz
 prepare_dir=prepared
 $(prepare_dir)/$(final_name):
