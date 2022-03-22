@@ -38,3 +38,4 @@ egs/vytautas/voc1/v02hifi/**
 egs/vytautas/voc1/Makefile.options
 egs/laimis/voc1/Makefile.options
 egs/lina/voc1/Makefile.options
+egs/sabina/voc1/Makefile.options
