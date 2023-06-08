@@ -1,6 +1,6 @@
 PYTHON:= python3.7
-CUDA_VERSION:= 11.0
-PYTORCH_VERSION:= 1.7.1
+CUDA_VERSION:= 11.3
+PYTORCH_VERSION:= 1.12.1
 DOT:= .
 .PHONY: all clean show_variables
 
@@ -13,7 +13,7 @@ show_variables:
 
 virtualenv.done: show_variables
 	test -d venv || $(PYTHON) -m venv venv
-	. venv/bin/activate; cd ../; pip install -U pip
+	. venv/bin/activate; cd ../; pip install -U pip setuptools wheel
 	# install numpy here since python3.6 is not supported in > 1.20
 	. venv/bin/activate; cd ../; pip install numpy
 	touch virtualenv.done

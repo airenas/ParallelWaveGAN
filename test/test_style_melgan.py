@@ -10,15 +10,14 @@ import logging
 import numpy as np
 import pytest
 import torch
-
-from parallel_wavegan.losses import DiscriminatorAdversarialLoss
-from parallel_wavegan.losses import GeneratorAdversarialLoss
-from parallel_wavegan.losses import MultiResolutionSTFTLoss
-from parallel_wavegan.models import StyleMelGANDiscriminator
-from parallel_wavegan.models import StyleMelGANGenerator
-
 from test_parallel_wavegan import make_mutli_reso_stft_loss_args
 
+from parallel_wavegan.losses import (
+    DiscriminatorAdversarialLoss,
+    GeneratorAdversarialLoss,
+    MultiResolutionSTFTLoss,
+)
+from parallel_wavegan.models import StyleMelGANDiscriminator, StyleMelGANGenerator
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -84,7 +83,7 @@ def make_style_melgan_discriminator_args(**kwargs):
 )
 def test_style_melgan_discriminator(dict_d):
     batch_size = 4
-    batch_length = 2 ** 14
+    batch_length = 2**14
     args_d = make_style_melgan_discriminator_args(**dict_d)
     y = torch.randn(batch_size, 1, batch_length)
     model_d = StyleMelGANDiscriminator(**args_d)

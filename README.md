@@ -20,12 +20,15 @@ Please check our samples in [our demo HP](https://kan-bayashi.github.io/Parallel
 The goal of this repository is to provide real-time neural vocoder, which is compatible with [ESPnet-TTS](https://github.com/espnet/espnet).  
 Also, this repository can be combined with [NVIDIA/tacotron2](https://github.com/NVIDIA/tacotron2)-based implementation (See [this comment](https://github.com/kan-bayashi/ParallelWaveGAN/issues/169#issuecomment-649320778)).
 
-You can try the real-time end-to-end text-to-speech demonstration in Google Colab!
+You can try the real-time end-to-end text-to-speech and singing voice synthesis demonstration in Google Colab!
 - Real-time demonstration with ESPnet2  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/espnet/notebook/blob/master/espnet2_tts_realtime_demo.ipynb)
 - Real-time demonstration with ESPnet1  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/espnet/notebook/blob/master/tts_realtime_demo.ipynb)
+- Real-time demonstration with Muskits [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SJTMusicTeam/svs_demo/blob/master/muskit_svs_realtime.ipynb)
 
 ## What's new
 
+- 2022/02/27 Support singing voice vocoder [egs/{kiritan, opencpop, oniku\_kurumi\_utagoe\_db, ofuton\_p\_utagoe\_db, csd, kising}/voc1]
+- 2021/10/21 Single-speaker Korean recipe [egs/kss/voc1] is available.
 - 2021/08/24 Add more pretrained models of StyleMelGAN and HiFi-GAN.
 - 2021/08/07 Add initial pretrained models of StyleMelGAN and HiFi-GAN.
 - 2021/08/03 Support [StyleMelGAN](https://arxiv.org/abs/2011.01557) generator and discriminator!
@@ -50,7 +53,7 @@ You can try the real-time end-to-end text-to-speech demonstration in Google Cola
 
 This repository is tested on Ubuntu 20.04 with a GPU Titan V.
 
-- Python 3.6+
+- Python 3.7+
 - Cuda 10.0+
 - CuDNN 7+
 - NCCL 2+ (for distributed multi-gpu training)
@@ -59,7 +62,7 @@ This repository is tested on Ubuntu 20.04 with a GPU Titan V.
 - sox (you can install via `sudo apt install sox` in ubuntu)
 
 Different cuda version should be working but not explicitly tested.  
-All of the codes are tested on Pytorch 1.4, 1.5.1, 1.7.1, 1.8.1, and 1.9.
+All of the codes are tested on Pytorch 1.4, 1.5.1, 1.7.1, 1.8.1, 1.9, 1.10.2, 1.11.0, 1.12.1, and 1.13.1.
 
 Pytorch 1.6 works but there are some issues in cpu mode (See #198).
 
@@ -108,6 +111,13 @@ Currently, the following recipes are supported.
 - [VCTK](https://homepages.inf.ed.ac.uk/jyamagis/page3/page58/page58.html): English multi-speaker
 - [LibriTTS](https://arxiv.org/abs/1904.02882): English multi-speaker
 - [YesNo](https://arxiv.org/abs/1904.02882): English speaker (For debugging)
+- [KSS](https://www.kaggle.com/bryanpark/korean-single-speaker-speech-dataset): Single Korean female speaker
+- [Oniku\_kurumi\_utagoe\_db/](http://onikuru.info/db-download/): Single Japanese female singer (singing voice)
+- [Kiritan](https://zunko.jp/kiridev/login.php): Single Japanese male singer (singing voice)
+- [Ofuton\_p\_utagoe\_db](https://sites.google.com/view/oftn-utagoedb/%E3%83%9B%E3%83%BC%E3%83%A0): Single Japanese female singer (singing voice)
+- [Opencpop](https://wenet.org.cn/opencpop/download/): Single Mandarin female singer (singing voice)
+- [CSD](https://zenodo.org/record/4785016/): Single Korean/English female singer (singing voice)
+- [KiSing](http://shijt.site/index.php/2021/05/16/kising-the-first-open-source-mandarin-singing-voice-synthesis-corpus/): Single Mandarin female singer (singing voice)
 
 To run the recipe, please follow the below instruction.
 
@@ -222,8 +232,20 @@ You can listen to the samples and download pretrained models from the link to ou
 | [kss_parallel_wavegan.v1](https://drive.google.com/open?id=1n5kitXZqPHUr-veoUKCyfJvb3p1g0VlY)                | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/libritts/voc1/conf/parallel_wavegan.v1.yaml)          | KO    | 24k     | 80-7600        | 2048 / 300 / 1200    | 400k    |
 | [hui_acg_hokuspokus_parallel_wavegan.v1](https://drive.google.com/open?id=1rwzpIwb65xbW5fFPsqPWdforsk4U-vDg) | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/libritts/voc1/conf/parallel_wavegan.v1.yaml)          | DE    | 24k     | 80-7600        | 2048 / 300 / 1200    | 400k    |
 | [ruslan_parallel_wavegan.v1](https://drive.google.com/open?id=1QGuesaRKGful0bUTTaFZdbjqHNhy2LpE)             | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/libritts/voc1/conf/parallel_wavegan.v1.yaml)          | RU    | 24k     | 80-7600        | 2048 / 300 / 1200    | 400k    |
+| [oniku_hifigan.v1](https://drive.google.com/open?id=1K1WNqmZVJaZqTwWNVcucZNeGKHu8-LVm)                       | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/oniku_kurumi_utagoe_db/voc1/conf/hifigan.v1.yaml)     | JP    | 24k     | 80-7600        | 2048 / 300 / 1200    | 250k    |
+| [kiritan_hifigan.v1](https://drive.google.com/open?id=1FHUUF5uUnlJ9-D7HmXw3_Sn_GRS48I36)                     | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/kiritan/voc1/conf/hifigan.v1.yaml)                    | JP    | 24k     | 80-7600        | 2048 / 300 / 1200    | 300k    |
+| [ofuton_hifigan.v1](https://drive.google.com/open?id=1fq8ITA2KpdtrzzD2hOlroParMg-qKjr7)                      | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/ofuton_p_utagoe_db/voc1/conf/hifigan.v1.yaml)         | JP    | 24k     | 80-7600        | 2048 / 300 / 1200    | 300k    |
+| [opencpop_hifigan.v1](https://drive.google.com/open?id=1hMf5yew_MrbPW0qy5qzXn0mxqbfHTadC)                    | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/opencpop/voc1/conf/hifigan.v1.yaml)                   | ZH    | 24k     | 80-7600        | 2048 / 300 / 1200    | 250k    |
+| [csd_english_hifigan.v1](https://drive.google.com/open?id=1NACjfBqmaecwh4dZMl714RukEkV8XLAi)                 | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/csd/voc1/conf/hifigan.v1.yaml)                        | EN    | 24k     | 80-7600        | 2048 / 300 / 1200    | 300k    |
+| [csd_korean_hifigan.v1](https://drive.google.com/open?id=1BGxIoRg4VgXcX0G-4Dwea030-qQ_Ynyp)                  | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/csd/voc1/conf/hifigan.v1.yaml)                        | EN    | 24k     | 80-7600        | 2048 / 300 / 1200    | 250k    |
+| [kising_hifigan.v1](https://drive.google.com/open?id=1GGu3pW89qxmJapd0Vm1aqp6lqgZARLO9)                      | [link](https://github.com/kan-bayashi/ParallelWaveGAN/blob/master/egs/kising/voc1/conf/hifigan.v1.yaml)                     | ZH    | 24k     | 80-7600        | 2048 / 300 / 1200    | 300k    |
+
+
 
 Please access at [our google drive](https://drive.google.com/open?id=1sd_QzcUNnbiaWq7L0ykMP7Xmk-zOuxTi) to check more results.
+
+Please check the license of database (e.g., whether it is proper for commercial usage) before using the pre-trained model.   
+The authors will not be responsible for any loss due to the use of the model and legal disputes regarding the use of the dataset.
 
 ## How-to-use pretrained models
 
@@ -438,6 +460,11 @@ $ parallel-wavegan-decode \
 [decode]: 100%|████████████████████████████████████████| 2/2 [00:00<00:00, 13.84it/s, RTF=0.00264]
 2021-08-10 09:13:29,660 (decode:174) INFO: Finished generation of 2 utterances (RTF = 0.005).
 ```
+
+## Notes
+
+- The terms of use of the pretrained model follow that of each corpus used for the training. Please carefully check by yourself.  
+- Some codes are derived from ESPnet or Kaldi, which are based on Apache-2.0 licenese.
 
 ## References
 

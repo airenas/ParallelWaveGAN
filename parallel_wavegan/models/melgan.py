@@ -10,9 +10,7 @@ import logging
 import numpy as np
 import torch
 
-from parallel_wavegan.layers import CausalConv1d
-from parallel_wavegan.layers import CausalConvTranspose1d
-from parallel_wavegan.layers import ResidualStack
+from parallel_wavegan.layers import CausalConv1d, CausalConvTranspose1d, ResidualStack
 from parallel_wavegan.utils import read_hdf5
 
 
@@ -93,7 +91,7 @@ class MelGANGenerator(torch.nn.Module):
             if not use_causal_conv:
                 layers += [
                     torch.nn.ConvTranspose1d(
-                        channels // (2 ** i),
+                        channels // (2**i),
                         channels // (2 ** (i + 1)),
                         upsample_scale * 2,
                         stride=upsample_scale,
@@ -105,7 +103,7 @@ class MelGANGenerator(torch.nn.Module):
             else:
                 layers += [
                     CausalConvTranspose1d(
-                        channels // (2 ** i),
+                        channels // (2**i),
                         channels // (2 ** (i + 1)),
                         upsample_scale * 2,
                         stride=upsample_scale,
@@ -119,7 +117,7 @@ class MelGANGenerator(torch.nn.Module):
                     ResidualStack(
                         kernel_size=stack_kernel_size,
                         channels=channels // (2 ** (i + 1)),
-                        dilation=stack_kernel_size ** j,
+                        dilation=stack_kernel_size**j,
                         bias=bias,
                         nonlinear_activation=nonlinear_activation,
                         nonlinear_activation_params=nonlinear_activation_params,
@@ -360,6 +358,9 @@ class MelGANDiscriminator(torch.nn.Module):
             ),
         ]
 
+        # reset parameters
+        self.reset_parameters()
+
     def forward(self, x):
         """Calculate forward propagation.
 
@@ -376,6 +377,23 @@ class MelGANDiscriminator(torch.nn.Module):
             outs += [x]
 
         return outs
+
+    def reset_parameters(self):
+        """Reset parameters.
+
+        This initialization follows official implementation manner.
+        https://github.com/descriptinc/melgan-neurips/blob/master/mel2wav/modules.py
+
+        """
+
+        def _reset_parameters(m):
+            if isinstance(m, torch.nn.Conv1d) or isinstance(
+                m, torch.nn.ConvTranspose1d
+            ):
+                m.weight.data.normal_(0.0, 0.02)
+                logging.debug(f"Reset parameters in {m}.")
+
+        self.apply(_reset_parameters)
 
 
 class MelGANMultiScaleDiscriminator(torch.nn.Module):

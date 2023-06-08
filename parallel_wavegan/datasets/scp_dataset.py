@@ -6,16 +6,13 @@
 """Dataset modules based on kaldi-style scp files."""
 
 import logging
-
 from multiprocessing import Manager
 
 import kaldiio
 import numpy as np
-
 from torch.utils.data import Dataset
 
-from parallel_wavegan.utils import HDF5ScpLoader
-from parallel_wavegan.utils import NpyScpLoader
+from parallel_wavegan.utils import HDF5ScpLoader, NpyScpLoader
 
 
 def _get_feats_scp_loader(feats_scp):
@@ -88,7 +85,7 @@ class AudioMelSCPDataset(Dataset):
             ]
             if len(audio_keys) != len(idxs):
                 logging.warning(
-                    f"Some files are filtered by audio length threshold "
+                    "Some files are filtered by audio length threshold "
                     f"({len(audio_keys)} -> {len(idxs)})."
                 )
             audio_keys = [audio_keys[idx] for idx in idxs]
@@ -102,16 +99,17 @@ class AudioMelSCPDataset(Dataset):
             ]
             if len(mel_keys) != len(idxs):
                 logging.warning(
-                    f"Some files are filtered by mel length threshold "
+                    "Some files are filtered by mel length threshold "
                     f"({len(mel_keys)} -> {len(idxs)})."
                 )
             audio_keys = [audio_keys[idx] for idx in idxs]
             mel_keys = [mel_keys[idx] for idx in idxs]
 
         # assert the number of files
-        assert len(audio_keys) == len(
-            mel_keys
-        ), f"Number of audio and mel files are different ({len(audio_keys)} vs {len(mel_keys)})."
+        assert len(audio_keys) == len(mel_keys), (
+            f"Number of audio and mel files are different ({len(audio_keys)} vs"
+            f" {len(mel_keys)})."
+        )
 
         self.audio_loader = audio_loader
         self.mel_loader = mel_loader
@@ -209,7 +207,7 @@ class AudioSCPDataset(Dataset):
             ]
             if len(audio_keys) != len(idxs):
                 logging.warning(
-                    f"Some files are filtered by audio length threshold "
+                    "Some files are filtered by audio length threshold "
                     f"({len(audio_keys)} -> {len(idxs)})."
                 )
             audio_keys = [audio_keys[idx] for idx in idxs]
@@ -303,7 +301,7 @@ class MelSCPDataset(Dataset):
             ]
             if len(mel_keys) != len(idxs):
                 logging.warning(
-                    f"Some files are filtered by mel length threshold "
+                    "Some files are filtered by mel length threshold "
                     f"({len(mel_keys)} -> {len(idxs)})."
                 )
             mel_keys = [mel_keys[idx] for idx in idxs]

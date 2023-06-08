@@ -33,6 +33,7 @@ egs/*/*/conf/tuning
 
 # tools related
 tools/venv/
+tools/*.done
 tools/apex/
 egs/vytautas/voc1/v02hifi/**
 egs/vytautas/voc1/Makefile.options

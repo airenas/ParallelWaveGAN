@@ -5,13 +5,14 @@
 
 """Tensorflow MelGAN modules complatible with pytorch."""
 
+import numpy as np
 import tensorflow as tf
 
-import numpy as np
-
-from parallel_wavegan.layers.tf_layers import TFConvTranspose1d
-from parallel_wavegan.layers.tf_layers import TFReflectionPad1d
-from parallel_wavegan.layers.tf_layers import TFResidualStack
+from parallel_wavegan.layers.tf_layers import (
+    TFConvTranspose1d,
+    TFReflectionPad1d,
+    TFResidualStack,
+)
 
 
 class TFMelGANGenerator(tf.keras.layers.Layer):
@@ -95,7 +96,7 @@ class TFMelGANGenerator(tf.keras.layers.Layer):
                     TFResidualStack(
                         kernel_size=stack_kernel_size,
                         channels=channels // (2 ** (i + 1)),
-                        dilation=stack_kernel_size ** j,
+                        dilation=stack_kernel_size**j,
                         bias=bias,
                         nonlinear_activation=nonlinear_activation,
                         nonlinear_activation_params=nonlinear_activation_params,
