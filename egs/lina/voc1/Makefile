@@ -21,6 +21,7 @@ train_config?=conf/style_melgan.v1.yaml
 tmp_dump_dir?=$(HOME)/dump
 dump_dir?=dump
 m_jobs?=10
+speaker?=lina
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
@@ -62,7 +63,7 @@ put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
 final_model_name?=style.v01
-final_name?=lina.$(final_model_name)-$(steps)
+final_name?=$(speaker).$(final_model_name)-$(steps)
 final_model=$(CURDIR)/$(final_name).tar.gz
 prepare_dir=prepared
 $(prepare_dir)/$(final_name):
