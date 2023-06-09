@@ -1,4 +1,4 @@
--include Makefile.options
+-include $(cfg)
 #####################################################################################
 USER=avaiciunas
 SERVER_URL?=agpu
