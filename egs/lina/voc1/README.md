@@ -6,6 +6,11 @@ make prepare && make train
 make prepare && nohup make train > v01.log &
 ```
 
+if there is a problem with a low hd space: 
+```bash
+make prepare m_jobs=4  # default 10
+```
+
 ## Pack model
 
 ```bash
