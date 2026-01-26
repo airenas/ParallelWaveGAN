@@ -1,32 +1,34 @@
 #!/bin/bash
 
-# Copyright 2019 Tomoki Hayashi
+# Copyright 2020 Tomoki Hayashi
 #  MIT License (https://opensource.org/licenses/MIT)
 
 . ./cmd.sh || exit 1;
 . ./path.sh || exit 1;
 
 # basic settings
-stage=-1       # stage to start
+stage=1        # stage to start
 stop_stage=100 # stage to stop
 verbose=1      # verbosity level (lower is less info)
-n_gpus=0       # number of gpus in training
-n_jobs=2       # number of parallel jobs in feature extraction
+n_gpus=1       # number of gpus in training
+n_jobs=4       # number of parallel jobs in feature extraction
 
 # NOTE(kan-bayashi): renamed to conf to avoid conflict in parse_options.sh
-conf=conf/parallel_wavegan.v1.debug.yaml
+conf=conf/hifigan.v1.yaml
 
 # directory path setting
-download_dir=downloads # direcotry to save downloaded files
-dumpdir=dump           # directory to dump features
+db_root=downloads # direcotry of unzipped m4singer
+         # details refer to https://m4singer.github.io/
+dumpdir=dump # directory to dump features
+wav_dumpdir=wav_dump # directory to dump wav
 
-# data setting
-use_fake_segments=false  # for testing
 
 # training related setting
 tag=""     # tag for directory to save model
 resume=""  # checkpoint path to resume training
            # (e.g. <path>/<to>/checkpoint-10000steps.pkl)
+pretrain="" # checkpoint path to load pretrained parameters
+            # (e.g. ../../jsut/<path>/<to>/checkpoint-400000steps.pkl)
 
 # decoding related setting
 checkpoint="" # checkpoint path to be used for decoding
@@ -36,25 +38,18 @@ checkpoint="" # checkpoint path to be used for decoding
 # shellcheck disable=SC1091
 . utils/parse_options.sh || exit 1;
 
-train_set="train_nodev" # name of training data directory
-dev_set="dev"           # name of development data direcotry
-eval_set="eval"         # name of evaluation data direcotry
+train_set=tr_no_dev
+dev_set=dev
+eval_set="eval"
 
 set -euo pipefail
 
-if [ "${stage}" -le -1 ] && [ "${stop_stage}" -ge -1 ]; then
-    echo "Stage -1: Data download"
-    local/data_download.sh "${download_dir}"
-fi
-
 if [ "${stage}" -le 0 ] && [ "${stop_stage}" -ge 0 ]; then
     echo "Stage 0: Data preparation"
-    local/data_prep.sh \
-        --use_fake_segments "${use_fake_segments}" \
-        --train_set "${train_set}" \
-        --dev_set "${dev_set}" \
-        --eval_set "${eval_set}" \
-        "${download_dir}/waves_yesno" data
+
+    python local/data_prep.py ${db_root}/m4singer \
+        --wav_dumpdir ${wav_dumpdir} \
+	--sr 24000
 fi
 
 stats_ext=$(grep -q "hdf5" <(yq ".format" "${conf}") && echo "h5" || echo "npy")
@@ -82,14 +77,20 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
     echo "Successfully finished feature extraction."
 
     # calculate statistics for normalization
-    echo "Statistics computation start. See the progress via ${dumpdir}/${train_set}/compute_statistics.log."
-    ${train_cmd} "${dumpdir}/${train_set}/compute_statistics.log" \
-        parallel-wavegan-compute-statistics \
-            --config "${conf}" \
-            --rootdir "${dumpdir}/${train_set}/raw" \
-            --dumpdir "${dumpdir}/${train_set}" \
-            --verbose "${verbose}"
-    echo "Successfully finished calculation of statistics."
+    if [ -z "${pretrain}" ]; then
+        # calculate statistics for normalization
+        echo "Statistics computation start. See the progress via ${dumpdir}/${train_set}/compute_statistics.log."
+        ${train_cmd} "${dumpdir}/${train_set}/compute_statistics.log" \
+            parallel-wavegan-compute-statistics \
+                --config "${conf}" \
+                --rootdir "${dumpdir}/${train_set}/raw" \
+                --dumpdir "${dumpdir}/${train_set}" \
+                --verbose "${verbose}"
+        echo "Successfully finished calculation of statistics."
+    else
+        echo "Use statistics of pretrained model. Skip statistics computation."
+        cp "$(dirname "${pretrain}")/stats.${stats_ext}" "${dumpdir}/${train_set}"
+    fi
 
     # normalize and dump them
     pids=()
@@ -114,9 +115,13 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
 fi
 
 if [ -z "${tag}" ]; then
-    expdir="exp/${train_set}_yesno_$(basename "${conf}" .yaml)"
+    expdir="exp/${train_set}_$(basename "${conf}" .yaml)"
+    if [ -n "${pretrain}" ]; then
+        pretrain_tag=$(basename "$(dirname "${pretrain}")")
+        expdir+="_${pretrain_tag}"
+    fi
 else
-    expdir="exp/${train_set}_yesno_${tag}"
+    expdir="exp/${train_set}_${tag}"
 fi
 if [ "${stage}" -le 2 ] && [ "${stop_stage}" -ge 2 ]; then
     echo "Stage 2: Network training"
@@ -135,6 +140,7 @@ if [ "${stage}" -le 2 ] && [ "${stop_stage}" -ge 2 ]; then
             --dev-dumpdir "${dumpdir}/${dev_set}/norm" \
             --outdir "${expdir}" \
             --resume "${resume}" \
+            --pretrain "${pretrain}" \
             --verbose "${verbose}"
     echo "Successfully finished training."
 fi
@@ -157,17 +163,6 @@ if [ "${stage}" -le 3 ] && [ "${stop_stage}" -ge 3 ]; then
                 --outdir "${outdir}/${name}" \
                 --verbose "${verbose}"
         echo "Successfully finished decoding of ${name} set."
-
-        # NOTE(kan-bayashi): Extra decoding for debugging
-        echo "Decoding start. See the progress via ${outdir}/${name}/decode.log."
-        ${cuda_cmd} --gpu "${n_gpus}" "${outdir}/${name}/decode.log" \
-            parallel-wavegan-decode \
-                --normalize-before \
-                --dumpdir "${dumpdir}/${name}/raw" \
-                --checkpoint "${checkpoint}" \
-                --outdir "${outdir}/${name}" \
-                --verbose "${verbose}"
-        echo "Successfully finished decoding of ${name} set."
     ) &
     pids+=($!)
     done
@@ -175,4 +170,36 @@ if [ "${stage}" -le 3 ] && [ "${stop_stage}" -ge 3 ]; then
     [ "${i}" -gt 0 ] && echo "$0: ${i} background jobs are failed." && exit 1;
     echo "Successfully finished decoding."
 fi
+
+
+if [ "${stage}" -le 4 ] && [ "${stop_stage}" -ge 4 ]; then
+    echo "Stage 4: Obejctive evaluation"
+    for dset in "${dev_set}" "${eval_set}"; do
+        _data="data/${dset}"
+        _gt_wavscp="${_data}/wav.scp"
+        # shellcheck disable=SC2012
+        [ -z "${checkpoint}" ] && checkpoint="$(ls -dt "${expdir}"/*.pkl | head -1 || true)"
+        _dir="${expdir}/wav/$(basename "${checkpoint}" .pkl)"
+        _gen_wavdir="${_dir}/${dset}"
+
+        # Objective Evaluation - MCD
+        echo "Begin Scoring for MCD metrics on ${dset}, results are written under ${_dir}/${dset}/MCD_res"
+        mkdir -p "${_dir}/${dset}/MCD_res"
+        python -m parallel_wavegan.bin.evaluate_mcd \
+            --gen_wavdir_or_wavscp "${_gen_wavdir}" \
+            --gt_wavdir_or_wavscp "${_gt_wavscp}" \
+            --outdir "${_dir}/${dset}/MCD_res"
+
+        # Objective Evaluation - log-F0 RMSE & Semitone ACC & VUV Error Rate
+        echo "Begin Scoring for F0 related metrics on ${dset}, results are written under ${_dir}/${dset}/F0_res"
+        mkdir -p "${_dir}/${dset}/F0_res"
+        python -m parallel_wavegan.bin.evaluate_f0 \
+            --gen_wavdir_or_wavscp "${_gen_wavdir}" \
+            --gt_wavdir_or_wavscp "${_gt_wavscp}" \
+            --outdir "${_dir}/${dset}/F0_res"
+
+    done
+    echo "Successfully finished objective evaluation."
+fi
+
 echo "Finished."
