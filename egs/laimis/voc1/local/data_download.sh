@@ -24,6 +24,7 @@ if [ ! -e "${download_dir}/${corpus}" ]; then
         base="${f##*$'\223'}"
         # mv "$f" "../${corpus}/wavs/$base"
         ffmpeg -i "$f" -ar 22050 -ac 1 -sample_fmt s16 "../${corpus}/wavs/$base"
+        rm "$f"
     done
     sed 's/^[^|]*–//' ARN_transcripts.txt | sort > ../${corpus}/metadata.csv
     echo "successfully prepared data."
