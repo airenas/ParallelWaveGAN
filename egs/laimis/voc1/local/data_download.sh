@@ -16,10 +16,17 @@ set -euo pipefail
 cwd=$(pwd)
 if [ ! -e "${download_dir}/${corpus}" ]; then
     mkdir -p "${download_dir}"
-    cp ${corpus_file} ${download_dir}/
     cd "${download_dir}"
-    tar -vxf ./*.tar.gz
-    rm ./*.tar.gz
+    tar -vxf "${corpus_file}"
+    mkdir -p "${corpus}/wavs"
+    cd "WAV96CHUNK"
+    for f in *$'\223'*.wav; do
+        base="${f##*$'\223'}"
+        # mv "$f" "../${corpus}/wavs/$base"
+        ffmpeg -i "$f" -ar 22050 -ac 1 -sample_fmt s16 "../${corpus}/wavs/$base"
+    done
+    sed 's/^[^|]*–//' ARN_transcripts.txt | sort > ../${corpus}/metadata.csv
+    echo "successfully prepared data."
     cd "${cwd}"
     echo "successfully prepared data."
 else
