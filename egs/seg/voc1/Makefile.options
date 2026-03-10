@@ -1,0 +1,5 @@
+corpus=arn
+corpus_file=arn_corpus.tgz
+work_dir?=v01
+train_config?=conf/style_melgan.v1.yaml
+n_jobs=2
