@@ -1,3 +1,4 @@
+cfg?=Makefile.options
 -include $(cfg)
 #####################################################################################
 work_dir?=.
@@ -12,26 +13,14 @@ speaker?=lina
 #####################################################################################
 $(work_dir)/downloads:
 	mkdir -p $@
-
-init-data: | $(work_dir)/downloads	
 #####################################################################################
-logs:
-	$(SSH_CMD) "cd $(exp_dir) && tail -n 40 -f exp/$(exp)/train.log"
-
-nvidia:
-	$(SSH_CMD) "watch nvidia-smi"
-#####################################################################################
-ssh:
-	$(SSH_CMD)
-#####################################################################################
-prepare: 
+prepare:  
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage -1 --stop-stage 1
 #####################################################################################
 train: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2
-
 #####################################################################################
-steps?=700000
+steps?=1000000
 resume=$(exp_dir)/checkpoint-$(steps)steps.pkl
 train-resume:
 ifneq ($(skip-ask), true)
@@ -44,10 +33,6 @@ train-one:
 
 train-many: 
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(from) --stop-stage $(to)
-
-#####################################################################################
-put-data:
-	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
 final_model_name?=style.v01
 final_name?=$(speaker).$(final_model_name)-$(steps)

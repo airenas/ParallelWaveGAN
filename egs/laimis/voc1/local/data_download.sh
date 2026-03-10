@@ -14,22 +14,11 @@ fi
 set -euo pipefail
 
 cwd=$(pwd)
-if [ ! -e "${download_dir}/${corpus}" ]; then
-    mkdir -p "${download_dir}"
-    cd "${download_dir}"
-    tar -vxf "${corpus_file}"
-    mkdir -p "${corpus}/wavs"
-    cd "WAV96CHUNK"
-    for f in *$'\223'*.wav; do
-        base="${f##*$'\223'}"
-        # mv "$f" "../${corpus}/wavs/$base"
-        ffmpeg -i "$f" -ar 22050 -ac 1 -sample_fmt s16 "../${corpus}/wavs/$base"
-        rm "$f"
-    done
-    sed 's/^[^|]*–//' ARN_transcripts.txt | sort > ../${corpus}/metadata.csv
+if [ ! -e "${download_dir}/corpus/.done" ]; then
+    mkdir -p "${download_dir}/corpus"
+    unzip "$corpus_file" -d ${download_dir}/corpus
     echo "successfully prepared data."
-    cd "${cwd}"
-    echo "successfully prepared data."
+    touch "${download_dir}/corpus/.done"
 else
     echo "already exists. skipped."
 fi
