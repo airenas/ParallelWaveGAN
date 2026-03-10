@@ -48,15 +48,6 @@ $(final_model): $(prepare_dir)/.done
 	cd $(prepare_dir) && tar -czvf $@ $(final_name)
 prepare-model: $(final_model)
 #####################################################################################
-clean:
-	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
-	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank $(work_dir)/tensorboard
-	rm -rf $(work_dir)/$(dump_dir)
-
-clean-data:
-	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
-	rm -rf $(work_dir)/downloads
-#####################################################################################
 $(tmp_dump_dir):
 	mkdir -p $@
 
@@ -76,6 +67,16 @@ normalize-%:
                 --dumpdir "$(tmp_dump_dir)/$(norm_dir)/norm/dump.$*" \
                 --verbose "$(verbose)" 2>&1 | tee $(norm_dir)/norm/normalize.$*.log 
 	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$* $(norm_dir)/norm		
+#####################################################################################
+clean:
+	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank $(work_dir)/tensorboard
+	rm -rf $(work_dir)/$(dump_dir)
+.PHONY: clean	
+clean/data:
+	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf $(work_dir)/downloads
+.PHONY: clean/data	
 #####################################################################################
 
 .EXPORT_ALL_VARIABLES:	
