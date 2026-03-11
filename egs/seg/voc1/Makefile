@@ -19,10 +19,12 @@ info:
 	@echo "dev_count: 		${dev_count}"
 	@echo "exp_dir: 		${exp_dir}"
 	@echo "final_model: 	${final_model}"
-	@echo "python: 			$$(python --version)"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
+	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
+	@echo "python: 			$$(python --version)"
 	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
 	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
+
 
 .PHONY: info
 #####################################################################################
