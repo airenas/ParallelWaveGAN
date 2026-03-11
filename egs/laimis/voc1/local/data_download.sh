@@ -18,11 +18,11 @@ if [ ! -e "${download_dir}/corpus/.done" ]; then
     mkdir -p "${download_dir}/corpus"
     unzip "$corpus_file" -d ${download_dir}/corpus
     echo "successfully extracted data."
-    echo "successfully converting to 22050kHz."
+    echo "converting to 22050kHz."
     python local/convert_sampling_rate.py --input_dir "${download_dir}/corpus/wavs" \
       --output_dir "${download_dir}/corpus/wavs22" --workers 10 \
       --cmd "ffmpeg -i {input} -ar 22050 -ac 1 -sample_fmt s16 {output}"
-    echo "successfully converted data."
+    echo "successfully converted audio."
     touch "${download_dir}/corpus/.done"
 else
     echo "already exists. skipped."
