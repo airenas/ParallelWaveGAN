@@ -9,6 +9,7 @@ tmp_dump_dir?=$(HOME)/dump
 dump_dir?=dump
 m_jobs?=10
 speaker?=agn
+dev_count?=250
 #####################################################################################
 info:
 	@echo "corpus_file: 	${corpus_file}"
