@@ -13,6 +13,7 @@ verbose=1      # verbosity level (lower is less info)
 n_gpus=1       # number of gpus in training
 n_jobs=${n_jobs}      # number of parallel jobs in feature extraction
 m_jobs=${m_jobs}
+speasker=${speaker}
 
 # NOTE(kan-bayashi): renamed to conf to avoid conflict in parse_options.sh
 conf=${train_config}
@@ -108,9 +109,9 @@ if [ "${stage}" -le 1 ] && [ "${stop_stage}" -ge 1 ]; then
 fi
 
 if [ -z "${tag}" ]; then
-    expdir="exp/${train_set}_ljspeech_$(basename "${conf}" .yaml)"
+    expdir="exp/${train_set}_${speaker}_$(basename "${conf}" .yaml)"
 else
-    expdir="exp/${train_set}_ljspeech_${tag}"
+    expdir="exp/${train_set}_${speaker}_${tag}"
 fi
 if [ "${stage}" -le 2 ] && [ "${stop_stage}" -ge 2 ]; then
     echo "Stage 2: Network training"

@@ -1,52 +1,70 @@
 cfg?=Makefile.options
 -include $(cfg)
 #####################################################################################
-work_dir?=.
-cuda?=0
+work_dir?=v01
 n_jobs?=16
 train_config?=conf/style_melgan.v1.yaml
 # need full path
 tmp_dump_dir?=$(HOME)/dump
 dump_dir?=dump
 m_jobs?=10
-speaker?=lina
+speaker?=agn
 #####################################################################################
-$(work_dir)/downloads:
+info:
+	@echo "corpus_file: 	${corpus_file}"
+	@echo "work_dir: 		${work_dir}"
+	@echo "train_config: 	${train_config}"
+	@echo "speaker: 		${speaker}"
+	@echo "dev_count: 		${dev_count}"
+	@echo "exp_dir: 		${exp_dir}"
+	@echo "final_model: 	${final_model}"
+	@echo "python: 			$$(python --version)"
+	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
+	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
+	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
+
+.PHONY: info
+#####################################################################################
+$(work_dir)/downloads $(work_dir):
 	mkdir -p $@
 #####################################################################################
-prepare:  
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage -1 --stop-stage 1
+$(work_dir)/.prepare.done: | $(work_dir)
+	./run.sh --stage -1 --stop-stage 1
+	touch $@
+prepare: $(work_dir)/.prepare.done
+.PHONY: prepare
 #####################################################################################
-train: 
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2
+$(work_dir)/.train.done: $(work_dir)/.prepare.done
+	./run.sh --stage 2 --stop-stage 2
+	touch $@
+train: $(work_dir)/.train.done
+.PHONY: train
 #####################################################################################
 steps?=1000000
 resume=$(exp_dir)/checkpoint-$(steps)steps.pkl
-train-resume:
+train/resume:
 ifneq ($(skip-ask), true)
 	@echo -n "Resume from $(resume)? [y/N] " && read ans && [ $${ans:-N} = y ]
 endif
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 2 --stop-stage 2 	--resume $(resume)
+	./run.sh --stage 2 --stop-stage 2 	--resume $(resume)
+.PHONY: train/resume	
 #####################################################################################
-train-one:
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) 
-
-train-many: 
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(from) --stop-stage $(to)
-#####################################################################################
-final_model_name?=style.v01
+version?=v01
+final_model_name?=style.${version}
 final_name?=$(speaker).$(final_model_name)-$(steps)
-final_model=$(CURDIR)/$(final_name).tar.gz
+final_model=$(work_dir)/$(final_name).tar.gz
 prepare_dir=prepared
+exp_dir?=$(work_dir)/exp/train_nodev_${speaker}_style_melgan.v1
 $(prepare_dir)/$(final_name):
 	mkdir -p $@
-$(prepare_dir)/$(final_name)/%: $(exp_dir)/% | $(prepare_dir)/$(final_name)
-	cp $< $@
-$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
+$(prepare_dir)/$(final_name)/%: $(work_dir)/.train.done $(exp_dir)/% | $(prepare_dir)/$(final_name)
+	cp $(exp_dir)/$* $@
+$(prepare_dir)/.done: $(work_dir)/.train.done $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
 	touch $@
 $(final_model): $(prepare_dir)/.done
 	cd $(prepare_dir) && tar -czvf $@ $(final_name)
-prepare-model: $(final_model)
+pack/model: $(final_model)
+.PHONY: pack/model
 #####################################################################################
 $(tmp_dump_dir):
 	mkdir -p $@
@@ -78,5 +96,4 @@ clean/data:
 	rm -rf downloads
 .PHONY: clean/data	
 #####################################################################################
-
 .EXPORT_ALL_VARIABLES:	
