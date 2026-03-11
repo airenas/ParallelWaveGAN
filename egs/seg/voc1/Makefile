@@ -67,6 +67,9 @@ $(final_model): $(prepare_dir)/.done
 pack/model: $(final_model)
 .PHONY: pack/model
 #####################################################################################
+build: pack/model
+.PHONY: build
+#####################################################################################
 $(tmp_dump_dir):
 	mkdir -p $@
 
