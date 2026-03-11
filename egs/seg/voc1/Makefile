@@ -69,13 +69,13 @@ normalize-%:
 	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$* $(norm_dir)/norm		
 #####################################################################################
 clean:
-	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
-	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank $(work_dir)/tensorboard
-	rm -rf $(work_dir)/$(dump_dir)
+	@echo -n "WARNING! Are you sure to delete $(work_dir)/... and data/...? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf $(work_dir)
+	rm -rf data dump
 .PHONY: clean	
 clean/data:
-	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
-	rm -rf $(work_dir)/downloads
+	@echo -n "WARNING! Are you sure to delete downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
+	rm -rf downloads
 .PHONY: clean/data	
 #####################################################################################
 
