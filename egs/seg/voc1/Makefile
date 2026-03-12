@@ -65,11 +65,13 @@ $(prepare_dir)/$(final_name)/%: $(work_dir)/.train.done $(exp_dir)/% | $(prepare
 $(prepare_dir)/.done: $(work_dir)/.train.done $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
 	touch $@
 $(final_model): $(prepare_dir)/.done
-	cd $(prepare_dir) && tar -czvf $@ $(final_name)
+	cd $(prepare_dir) && tar -czvf ../$@ $(final_name)
 pack/model: $(final_model)
 .PHONY: pack/model
 #####################################################################################
 build: pack/model
+	@echo "Final model is ready at $(final_model)"
+	@echo "DONE"
 .PHONY: build
 #####################################################################################
 $(tmp_dump_dir):

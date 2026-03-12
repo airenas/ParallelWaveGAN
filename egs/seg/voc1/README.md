@@ -9,7 +9,7 @@ It trains style.melgan vocoder
 ### Preparation
 
 1. Download corpus zip from: <pending>.
-2. Prepare Makefile configuration file: `Makefile.option`:
+2. Prepare Makefile configuration file: `Makefile.options`:
    Add:
    1. full path to corpus file
    2. speaker 
@@ -41,7 +41,7 @@ python: 		Python 3.10.20
 torch: 			1.13.1+cu117
 cuda in python: 11.7
 ```
-Check that the corpus file and work dir are correct. 
+Check that the corpus file and exp dir are correct. 
 Check that cuda in python displays a version.
 
 ### Run model training
