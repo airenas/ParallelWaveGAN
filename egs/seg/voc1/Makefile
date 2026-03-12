@@ -6,7 +6,7 @@ n_jobs?=16
 train_config?=conf/style_melgan.v1.yaml
 # need full path
 tmp_dump_dir?=$(HOME)/dump
-dump_dir?=dump
+dump_dir?=${work_dir}/dump
 m_jobs?=10
 speaker?=agn
 dev_count?=250
@@ -95,7 +95,6 @@ normalize-%:
 clean:
 	@echo -n "WARNING! Are you sure to delete $(work_dir)/... and data/...? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)
-	rm -rf data dump
 .PHONY: clean	
 clean/data:
 	@echo -n "WARNING! Are you sure to delete downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
