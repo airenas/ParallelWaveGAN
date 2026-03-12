@@ -93,7 +93,7 @@ normalize-%:
 	mv $(tmp_dump_dir)/$(norm_dir)/norm/dump.$* $(norm_dir)/norm		
 #####################################################################################
 clean:
-	@echo -n "WARNING! Are you sure to delete $(work_dir)/... and data/...? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@echo -n "WARNING! Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)
 .PHONY: clean	
 clean/data:
