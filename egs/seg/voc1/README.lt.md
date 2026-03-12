@@ -78,15 +78,16 @@ cuda in python: 	12.x (arba 11.x)
 
 ### Mokinimas SEG
 
-1. Parsisiunčiame garsyną zip formatu: <pending>.
-2. Pasiruošiame `make` konfigūracinį failą : `Makefile.options` šioje direktorijoje:
+1. Parsisiunčiame garsyną zip formatu: *nuoroda bus pateikta...*.
+2. Pasiruošiame `make` konfigūracinį failą : `Makefile.options` šioje direktorijoje.
+   
    Nurodome:
    1. kelią iki garsyno zip failo
-   2. kalbėtoją
-   3. eksprerimentų direktoriją (work_dir)
-   4. varsiją (neprivaloma) - bus pažymėtas galutinis modelio failas
+   2. kalbėtoją. Pvz. nurodome kalbėtojo vardą, ar sutrumpinimą.
+   3. eksprerimentų direktoriją (work_dir). Joje bus saugomi tarpiniai duomenys ir galutinis modelis.
+   4. versiją (neprivaloma). Skirta pažymėti galutinį modelio failą
 
-   Pvz:
+   `Makefile.options` pavyzdys:
    ```make
    corpus_file?=/home/user/dwn/corpus/AGN-1.0.zip
    speaker?=agn
@@ -112,14 +113,15 @@ cuda in python: 	12.x (arba 11.x)
 
    ```
    Patikriname ar garsyno failas ir eksperimentų direktorija teisinga.
-   Patikriname GPU inicializuojamas teisingai python aplinkoje (`cuda in python: ` rodo versiją).
+   Patikriname ar GPU inicializuojamas teisingai python aplinkoje. `cuda in python: ` turi rodyti versijos numerį.
 4. Mokiname
    ```bash
    make build
-   ## or in background
+   ## arba 
    nohup make build &
    ```
    Modelis bus apmokintas, išsaugotas ir paruoštas `${work_dir}/${speaker}.style.${version}-1000000.tar.gz` faile.
+   Mokinimo progresas matomas terminalo lange. Jei leidžiama su `nohup`, tada matomas `nohup.out` faile. Pvz.: `tail - f nohup.out`. 
 
 Preliminarūs mokinimo laikai su SE garsyno vienu kalbėtoju (18h)
 | GPU | Laikas |
