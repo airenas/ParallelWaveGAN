@@ -1,21 +1,24 @@
 ## Sintezės emocinis garsynas
 
+Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
+
 ### Turinys
 - [Sintezės emocinis garsynas](#sintezės-emocinis-garsynas)
   - [Turinys](#turinys)
   - [Apie](#apie)
   - [Reikalavimai](#reikalavimai)
-  - [Instaliavimas](#instaliavimas)
-  - [Mokinimas SEG](#mokinimas-seg)
-  - [Mokinimas su kitu garsynu](#mokinimas-su-kitu-garsynu)
+  - [Diegimas](#diegimas)
+  - [Mokymas](#mokymas)
+    - [SE garsynas](#se-garsynas)
+    - [Mokymas su kitu garsynu](#mokymas-su-kitu-garsynu)
 
 ### Apie
 
-Ši repositorija yra kopija iš: https://github.com/kan-bayashi/ParallelWaveGAN. Repozitorija skirta mokinti ir paruošti sintezės vokoderius. Vokoderis generuoja audio signalą iš mel-spektogramos. Žemiau pateikta šnekos sintezės schema ir šios repozitorijos paskirtis joje:
+Ši repozitorija yra kopija (*fork*) iš https://github.com/kan-bayashi/ParallelWaveGAN. Ji skirta sintezės vokoderiams mokyti ir paruošti. Vokoderis generuoja garso signalą iš mel spektrogramos. Žemiau pateikta šnekos sintezės schema ir šios repozitorijos paskirtis joje:
 
 ```mermaid
 flowchart LR
-    A(Tekstas) --> B[Akustinis Modelis]
+    A(Tekstas) --> B[Akustinis modelis]
     B --> C[Vokoderis]
     C --> D(Audio)
     
@@ -23,69 +26,74 @@ flowchart LR
     style A stroke:none
     style D stroke:none
 
-    
-    note(šita repozitorija skirta paruošti)
+    note(ši repozitorija skirta paruošti)
     note -.-> C
     style note stroke:none
 ```
 
-Su šios repozitorijos skriptais galime apmokinti įvairių tipų vokoderius. Žr.: [pagr. repozitorija](https://github.com/kan-bayashi/ParallelWaveGAN). 
+Naudodami šios repozitorijos skriptus galime apmokyti įvairių tipų vokoderius. Žr. [pagrindinę repozitoriją](https://github.com/kan-bayashi/ParallelWaveGAN).
 
-Šioje direktorijoje skriptai pritaikyti specialiai SE Garsynui. Bet gali būti naudojami mokinti vokoderį turint ir kitus audio failus. Čia skriptai sukonfigūruoti ruošti StylMelGAN tipo vokoderį. Vokoderio panaudojimo informacija pateikta kitoje: [ESPNet repozitorijoje](https://github.com/airenas/espnet)
+Šioje direktorijoje skriptai pritaikyti specialiai SE garsynui, tačiau juos galima naudoti ir vokoderiui mokyti su kitais garso failais. Čia skriptai sukonfigūruoti `StyleMelGAN` tipo vokoderiui ruošti. Informacija apie vokoderio panaudojimą pateikta [ESPNet repozitorijoje](https://github.com/airenas/espnet/blob/master/egs2/seg/tts1/README.lt.md).
 
 ### Reikalavimai
 
 | | | |
 |-|-|-|
-| OS | Linux (Debian, Ubuntu) | Skriptai veikia Linux OS (išbandyta Ubuntu, Debian, bet turėtų veikti ir kitose distribucijose). Windows mašinoje galima mokinti naudojant WSL. |
-| RAM | >32Gb | |
-| HDD | >70Gb | |
-| GPU | >=10Gb | |
-| CUDA | CUDA11, CUDA12 | |
+| OS | Linux (Debian, Ubuntu) | Scenarijai veikia Linux aplinkoje (išbandyta su Ubuntu ir Debian, tačiau turėtų veikti ir kitose distribucijose). Windows kompiuteryje galima mokyti naudojant WSL. |
+| RAM | >32 GB | |
+| HDD | >70 GB | |
+| GPU | >=10 GB | |
+| CUDA | CUDA 11 arba CUDA 12 | |
 | Programos, bibliotekos | git, make, conda, libsndfile | |
 
-
-### Instaliavimas
+### Diegimas
 
 ```bash
+## įdiegiame reikalingus įrankius ir bibliotekas
+sudo apt install git make libsndfile-dev
 ### parsisiunčiame šią repozitoriją
 git clone https://github.com/airenas/ParallelWaveGAN.git
 cd ParallelWaveGAN
-### pasiruošiame python 3.10 aplinką
+### pasiruošiame Python 3.10 aplinką
 conda create -n pwgan python=3.10
 conda activate pwgan
-### instaliuojame
+### įdiegiame paketą
 pip install -e . --no-build-isolation
-### kai kurios bibliotekos suinstaliuojamos per naujos
+### pataisome kai kurių bibliotekų versijas
 pip install scipy==1.10.1
 
-### Jei sistemoje yra CUDA11 driveriai
-### suinstaliuojame senesnį pytorch
+### jei sistemoje yra CUDA 11 tvarkyklės,
+### įdiegiame senesnę torch versiją
 # pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1
 ```
 
-Patikriname ar GPU randamas sukurtoje python aplinkoje, ar driveris užkraunamas:
+Patikriname, ar GPU aptinkamas sukurtoje Python aplinkoje ir ar tvarkyklė sėkmingai užkraunama:
+
 ```bash
-### patikriname 
+### patikriname
 cd egs/seg/voc1
 make info
 ```
+
 Jei viskas gerai, turėtume matyti:
+
 ```txt
 ....
 cuda in python: 	12.x (arba 11.x)
 ```
 
-### Mokinimas SEG
+### Mokymas
 
-1. Parsisiunčiame garsyną zip formatu: *nuoroda bus pateikta...*.
-2. Pasiruošiame `make` konfigūracinį failą : `Makefile.options` šioje direktorijoje.
-   
+#### SE garsynas
+
+1. Parsisiunčiame garsyną ZIP formatu: *TBD*.
+2. Šioje direktorijoje paruošiame `make` konfigūracijos failą `Makefile.options`.
+
    Nurodome:
-   1. kelią iki garsyno zip failo
-   2. kalbėtoją. Pvz. nurodome kalbėtojo vardą, ar sutrumpinimą.
-   3. eksprerimentų direktoriją (work_dir). Joje bus saugomi tarpiniai duomenys ir galutinis modelis.
-   4. versiją (neprivaloma). Skirta pažymėti galutinį modelio failą
+   1. kelią iki garsyno ZIP failo;
+   2. kalbėtoją, pvz., kalbėtojo vardą arba sutrumpinimą;
+   3. eksperimentų direktoriją (`work_dir`), kurioje bus saugomi tarpiniai duomenys ir galutinis modelis;
+   4. versiją (nebūtina), skirtą galutiniam modelio failui pažymėti.
 
    `Makefile.options` pavyzdys:
    ```make
@@ -94,9 +102,9 @@ cuda in python: 	12.x (arba 11.x)
    work_dir?=agn-01
    version?=v01
    ```
-3. Patikriname konfigūraciją
-   Run `make info`
+3. Patikriname konfigūraciją.
 
+   Vykdome komandą `make info`. Rezultato pavyzdys:
    ```txt
    corpus_file: 	/mnt/corpus/AGN-1.0.zip
    work_dir: 		agn-01
@@ -110,27 +118,42 @@ cuda in python: 	12.x (arba 11.x)
    python: 			Python 3.10.20
    torch: 			2.10.0+cu128
    cuda in python: 	12.8
-
    ```
-   Patikriname ar garsyno failas ir eksperimentų direktorija teisinga.
-   Patikriname ar GPU inicializuojamas teisingai python aplinkoje. `cuda in python: ` turi rodyti versijos numerį.
-4. Mokiname
+
+   Patikriname, ar garsyno failas ir eksperimentų direktorija nurodyti teisingai.
+   Taip pat patikriname, ar GPU teisingai inicializuojamas Python aplinkoje. Lauke `cuda in python:` turi būti rodoma versija.
+4. Paleidžiame mokymą.
+
    ```bash
    make build
-   ## arba 
+   ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
-   Modelis bus apmokintas, išsaugotas ir paruoštas `${work_dir}/${speaker}.style.${version}-1000000.tar.gz` faile.
-   Mokinimo progresas matomas terminalo lange. Jei leidžiama su `nohup`, tada matomas `nohup.out` faile. Pvz.: `tail - f nohup.out`. 
 
-Preliminarūs mokinimo laikai su SE garsyno vienu kalbėtoju (18h)
+   Modelis bus apmokytas, išsaugotas ir paruoštas faile `${work_dir}/${speaker}.style.${version}-1000000.tar.gz`.
+   Mokymo eiga matoma terminalo lange. Jei paleidžiama su `nohup`, ji bus įrašoma į `nohup.out` failą. Pvz.: `tail -f nohup.out`.
+
+Preliminari mokymo trukmė su vienu SE garsyno kalbėtoju (18 h garsyno):
+
 | GPU | Laikas |
 | -- | --- |
 | GeForce GTX 1080 Ti, 11178 MiB | apie 14 dienų |
-| NVIDIA RTX 4000 Ada Generation, 20475 MiB | apie 6 dienas  |
+| NVIDIA RTX 4000 Ada Generation, 20475 MiB | apie 8 dienas |
 
-### Mokinimas su kitu garsynu
+#### Mokymas su kitu garsynu
 
-1. Padėkite audio failus `downloads/corpus/wavs`. Failų formatas turi būti mono 16-bit PCM WAV 22,050 kHz dažniu. (Pvz.: galite konvertuoti audio failus su komanda `ffmpeg -i {input} -ar 22050 -ac 1 -sample_fmt s16 {output}.wav`)
-2. Pažymėkite, kad garsynas paruoštas: `touch downloads/corpus/.done`
-3. Tęskite mokinimą kaip [Mokinimas SEG](#mokinimas-seg). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
+1. Įdėkite garso failus į `downloads/corpus/wavs`. Failų formatas turi būti mono, 16 bitų PCM WAV, 22050 Hz. (Pvz., galite konvertuoti garso failus komanda `ffmpeg -i {input} -ar 22050 -ac 1 -sample_fmt s16 {output}.wav`.)
+2. Pažymėkite, kad garsynas paruoštas: `touch downloads/corpus/.done`. Garsyno katalogo struktūros pavyzdys:
+
+```tree
+downloads
+└── corpus
+    ├── .done
+    └── wavs
+        ├── 00007600-d7ba-41a5-bf11-6369fe31bbbe.wav
+        ├── 0000b912-b69e-4919-b581-e047aa60dd82.wav
+        ├── 00018c30-6e45-4039-b5d6-ab1de5ce861e.wav
+        ├──             ...
+```
+
+3. Tęskite mokymą kaip [SE Garsynas](#se-garsynas) punkte. Konfigūracijoje nurodytas kelias iki garsyno (`corpus_file`) nebus naudojamas.

@@ -2,6 +2,10 @@
 
 Recipe for training a vocoder for Lithuanian voice on SEG Corpus.
 
+Link to the SEG Corpus: *TBD*
+
+Detailed info in Lithuanian [README.lt](README.lt.md).
+
 ## Train
 
 It trains style.melgan vocoder
