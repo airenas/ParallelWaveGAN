@@ -50,6 +50,7 @@ Naudodami šios repozitorijos skriptus galime apmokyti įvairių tipų vokoderiu
 
 ```bash
 ## įdiegiame reikalingus įrankius ir bibliotekas
+## pvz Debian
 sudo apt install git make libsndfile-dev
 ### parsisiunčiame šią repozitoriją
 git clone https://github.com/airenas/ParallelWaveGAN.git
@@ -122,6 +123,7 @@ cuda in python: 	12.x (arba 11.x)
 
    Patikriname, ar garsyno failas ir eksperimentų direktorija nurodyti teisingai.
    Taip pat patikriname, ar GPU teisingai inicializuojamas Python aplinkoje. Lauke `cuda in python:` turi būti rodoma versija.
+   
 4. Paleidžiame mokymą.
 
    ```bash
