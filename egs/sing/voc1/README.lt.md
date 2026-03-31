@@ -1,15 +1,15 @@
-## Sintezės emocinis garsynas
+## SINtezės Garsynas
 
 Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
 
 ### Turinys
-- [Sintezės emocinis garsynas](#sintezės-emocinis-garsynas)
+- [SINtezės Garsynas](#sintezės-garsynas)
   - [Turinys](#turinys)
   - [Apie](#apie)
   - [Reikalavimai](#reikalavimai)
   - [Diegimas](#diegimas)
   - [Mokymas](#mokymas)
-    - [SE garsynas](#se-garsynas)
+    - [SING](#sing)
     - [Mokymas su kitu garsynu](#mokymas-su-kitu-garsynu)
 
 ### Apie
@@ -33,7 +33,7 @@ flowchart LR
 
 Naudodami šios repozitorijos skriptus galime apmokyti įvairių tipų vokoderius. Žr. [pagrindinę repozitoriją](https://github.com/kan-bayashi/ParallelWaveGAN).
 
-Šioje direktorijoje skriptai pritaikyti specialiai SE garsynui, tačiau juos galima naudoti ir vokoderiui mokyti su kitais garso failais. Čia skriptai sukonfigūruoti `StyleMelGAN` tipo vokoderiui ruošti. Informacija apie vokoderio panaudojimą pateikta [ESPNet repozitorijoje](https://github.com/airenas/espnet/blob/master/egs2/seg/tts1/README.lt.md).
+Šioje direktorijoje skriptai pritaikyti specialiai SE garsynui, tačiau juos galima naudoti ir vokoderiui mokyti su kitais garso failais. Čia skriptai sukonfigūruoti `StyleMelGAN` tipo vokoderiui ruošti. Informacija apie vokoderio panaudojimą pateikta [ESPNet repozitorijoje](https://github.com/airenas/espnet/blob/master/egs2/sing/tts1/README.lt.md).
 
 ### Reikalavimai
 
@@ -72,7 +72,7 @@ Patikriname, ar GPU aptinkamas sukurtoje Python aplinkoje ir ar tvarkyklė sėkm
 
 ```bash
 ### patikriname
-cd egs/seg/voc1
+cd egs/sing/voc1
 make info
 ```
 
@@ -85,7 +85,7 @@ cuda in python: 	12.x (arba 11.x)
 
 ### Mokymas
 
-#### SE garsynas
+#### SING 
 
 1. Parsisiunčiame garsyną ZIP formatu: *TBD*.
 2. Šioje direktorijoje paruošiame `make` konfigūracijos failą `Makefile.options`.
@@ -158,4 +158,4 @@ downloads
         ├──             ...
 ```
 
-3. Tęskite mokymą kaip [SE Garsynas](#se-garsynas) punkte. Konfigūracijoje nurodytas kelias iki garsyno (`corpus_file`) nebus naudojamas.
+3. Tęskite mokymą kaip [SING](#sing) punkte. Konfigūracijoje nurodytas kelias iki garsyno (`corpus_file`) nebus naudojamas.

@@ -1,8 +1,8 @@
-## Sintezės emocinis garsynas
+## SINtezės Garsynas
 
-Recipe for training a vocoder for Lithuanian voice on SEG Corpus.
+Recipe for training a vocoder for Lithuanian voice on SING Corpus.
 
-Link to the SEG Corpus: *TBD*
+Link to the SING Corpus: *TBD*
 
 Detailed info in Lithuanian [README.lt](README.lt.md).
 
