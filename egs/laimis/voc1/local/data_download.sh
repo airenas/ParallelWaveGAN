@@ -16,8 +16,15 @@ set -euo pipefail
 cwd=$(pwd)
 if [ ! -e "${download_dir}/corpus/.done" ]; then
     mkdir -p "${download_dir}/corpus"
-    unzip "$corpus_file" -d ${download_dir}/corpus
-    echo "successfully extracted data."
+
+    if [ -n "${corpus_dir:-}" ]; then
+        echo "Copying corpus from ${corpus_dir}..."
+        cp -a "${corpus_dir}/." "${download_dir}/corpus/"
+    else
+        echo "Unzipping corpus from ${corpus_file}..."
+        unzip "$corpus_file" -d "${download_dir}/corpus"
+        echo "Successfully extracted data."
+    fi
     echo "converting to 22050kHz."
     python local/convert_sampling_rate.py --input_dir "${download_dir}/corpus/wavs" \
       --output_dir "${download_dir}/corpus/wavs22" --workers 10 \

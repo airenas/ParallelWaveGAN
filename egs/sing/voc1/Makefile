@@ -10,9 +10,11 @@ dump_dir?=${work_dir}/dump
 m_jobs?=10
 speaker?=agn
 dev_count?=250
+corpus_dir?=
 #####################################################################################
 info:
 	@echo "corpus_file: 	${corpus_file}"
+	@echo "corpus_dir:	 	${corpus_dir}"
 	@echo "work_dir: 		${work_dir}"
 	@echo "train_config: 	${train_config}"
 	@echo "speaker: 		${speaker}"
@@ -24,8 +26,6 @@ info:
 	@echo "python: 			$$(python --version)"
 	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
 	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
-
-
 .PHONY: info
 #####################################################################################
 $(work_dir)/downloads $(work_dir):
