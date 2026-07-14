@@ -11,6 +11,7 @@ m_jobs?=10
 speaker?=agn
 dev_count?=250
 corpus_dir?=
+freq?=22050
 #####################################################################################
 info:
 	@echo "corpus_file: 	${corpus_file}"
@@ -21,6 +22,7 @@ info:
 	@echo "dev_count: 		${dev_count}"
 	@echo "exp_dir: 		${exp_dir}"
 	@echo "final_model: 	${final_model}"
+	@echo "freq: 			${freq}"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
