@@ -62,16 +62,16 @@ prepare_dir=prepared
 exp_dir?=$(work_dir)/exp/train_nodev_${speaker}_style_melgan.v1
 $(prepare_dir)/$(final_name):
 	mkdir -p $@
-$(prepare_dir)/$(final_name)/%: $(work_dir)/.train.done $(exp_dir)/% | $(prepare_dir)/$(final_name)
+$(prepare_dir)/$(final_name)/%: $(exp_dir)/% | $(prepare_dir)/$(final_name)
 	cp $(exp_dir)/$* $@
-$(prepare_dir)/.done: $(work_dir)/.train.done $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
+$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/checkpoint-$(steps)steps.pkl $(prepare_dir)/$(final_name)/config.yml $(prepare_dir)/$(final_name)/stats.h5
 	touch $@
 $(final_model): $(prepare_dir)/.done
 	cd $(prepare_dir) && tar -czvf ../$@ $(final_name)
 pack/model: $(final_model)
 .PHONY: pack/model
 #####################################################################################
-build: pack/model
+build: train pack/model
 	@echo "Final model is ready at $(final_model)"
 	@echo "DONE"
 .PHONY: build
