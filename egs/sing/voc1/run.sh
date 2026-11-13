@@ -20,7 +20,7 @@ work_dir=${work_dir}
 conf=${train_config}
 
 # directory path setting
-download_dir=downloads        # direcotry to save downloaded files
+download_dir=${download_dir}  # directory to save downloaded files
 dumpdir=${dump_dir}           # directory to dump features
 
 # training related setting

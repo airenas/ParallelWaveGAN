@@ -2,6 +2,7 @@ cfg?=Makefile.options
 -include $(cfg)
 #####################################################################################
 work_dir?=v01
+download_dir?=downloads
 n_jobs?=16
 train_config?=conf/style_melgan.v1.yaml
 # need full path
@@ -16,6 +17,7 @@ freq?=22050
 info:
 	@echo "corpus_file: 	${corpus_file}"
 	@echo "corpus_dir:	 	${corpus_dir}"
+	@echo "download_dir: 	${download_dir}"
 	@echo "work_dir: 		${work_dir}"
 	@echo "train_config: 	${train_config}"
 	@echo "speaker: 		${speaker}"
